@@ -10,6 +10,12 @@ import { ChallengesModule } from './challenges/challenges.module';
 import { BadgesModule } from './badges/badges.module';
 import { TasksModule } from './tasks/tasks.module';
 import { RewardsModule } from './rewards/rewards.module';
+import { EmissionFactorsModule } from './emission-factors/emission-factors.module';
+import { EmployeesModule } from './employees/employees.module';
+import { CarbonEngineModule } from './carbon-engine/carbon-engine.module';
+import { AttendanceModule } from './attendance/attendance.module';
+import { InvoicesModule } from './invoices/invoices.module';
+import { ReportsModule } from './reports/reports.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 @Module({
@@ -28,6 +34,12 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     BadgesModule,
     TasksModule,
     RewardsModule,
+    EmissionFactorsModule,
+    EmployeesModule,
+    CarbonEngineModule,
+    AttendanceModule,
+    InvoicesModule,
+    ReportsModule,
   ],
 })
 export class AppModule implements NestModule {

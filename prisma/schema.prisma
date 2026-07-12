@@ -149,6 +149,46 @@ enum NotificationEventType {
   @@map("notification_event_type")
 }
 
+// Commute transport modes used for employee commuting emission calculation.
+// Values are used verbatim as EmissionFactor.activityType for factor lookup.
+enum TransportMode {
+  Car_Petrol
+  Car_Diesel
+  Car_Electric
+  Motorcycle
+  Bus
+  Train
+  Bicycle
+  Walk
+  Carpool
+
+  @@map("transport_mode")
+}
+
+enum AttendanceStatus {
+  Present
+  WFH
+  Leave
+  Holiday
+
+  @@map("attendance_status")
+}
+
+// Invoice categories. Values are used verbatim as EmissionFactor.activityType for factor lookup.
+enum InvoiceCategory {
+  Electricity
+  Fuel
+  Diesel
+  Petrol
+  Natural_Gas
+  Air_Travel
+  Hotel
+  Office_Purchases
+  Waste_Disposal
+
+  @@map("invoice_category")
+}
+
 // ============================================================================
 // MODELS DEFINITION
 // ============================================================================
@@ -163,9 +203,11 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  employee       Employee?
-  updatedConfigs ESGConfiguration[] @relation("ConfigUpdater")
-  notifications  Notification[]
+  employee             Employee?
+  updatedConfigs       ESGConfiguration[]   @relation("ConfigUpdater")
+  notifications        Notification[]
+  invoicesCreated      Invoice[]
+  invoiceImportBatches InvoiceImportBatch[]
 
   @@map("users")
 }
@@ -191,6 +233,7 @@ model Department {
   sustainabilityGoals SustainabilityGoal[]
   diversityMetrics    DiversityMetric[]
   departmentScores    DepartmentScore[]
+  invoices            Invoice[]
 
   @@index([parentDepartmentId], map: "idx_departments_parent_dept")
   @@map("departments")
@@ -209,17 +252,20 @@ model Employee {
   createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  headedDepartments       Department[]             @relation("DepartmentHead")
+  headedDepartments       Department[]              @relation("DepartmentHead")
   employeeParticipations  EmployeeParticipation[]
   trainingRecords         TrainingRecord[]
   acknowledgedPolicies    PolicyAcknowledgement[]
-  auditedAudits           Audit[]                  @relation("AuditorRelation")
-  ownedComplianceIssues   ComplianceIssue[]        @relation("ComplianceOwnerRelation")
+  auditedAudits           Audit[]                   @relation("AuditorRelation")
+  ownedComplianceIssues   ComplianceIssue[]         @relation("ComplianceOwnerRelation")
   xpEvents                XPEvent[]
   challengeParticipations ChallengeParticipation[]
   badges                  EmployeeBadge[]
   rewardRedemptions       RewardRedemption[]
   notificationSettings    NotificationSetting[]
+  commuteProfile          EmployeeCommuteProfile?
+  attendanceRecords       Attendance[]
+  monthlyEmissions        EmployeeMonthlyEmission[]
 
   @@index([departmentId], map: "idx_employees_department")
   @@map("employees")
@@ -332,10 +378,108 @@ model CarbonTransaction {
   createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt           DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
+  invoice Invoice?
+
   @@index([operationRecordId], map: "idx_carbon_transactions_op_rec")
   @@index([emissionFactorId], map: "idx_carbon_transactions_factor")
   @@index([departmentId, txnDate], map: "idx_carbon_transactions_dept_date")
   @@map("carbon_transactions")
+}
+
+// ============================================================================
+// CARBON EMISSIONS: EMPLOYEE COMMUTING + COMPANY INVOICES
+// ============================================================================
+
+model EmployeeCommuteProfile {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId    String        @unique @map("employee_id") @db.Uuid
+  employee      Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  transportMode TransportMode @map("transport_mode")
+  distanceKm    Decimal       @map("distance_km") @db.Decimal(8, 2)
+  roundTrip     Boolean       @default(true) @map("round_trip")
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("employee_commute_profiles")
+}
+
+model Attendance {
+  id                    String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId            String           @map("employee_id") @db.Uuid
+  employee              Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date                  DateTime         @db.Date
+  status                AttendanceStatus @default(Present)
+  transportModeOverride TransportMode?   @map("transport_mode_override")
+  active                Boolean          @default(true)
+  createdAt             DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([employeeId, date], name: "uq_attendance_employee_date")
+  @@index([employeeId, date], map: "idx_attendance_employee_date")
+  @@map("attendance")
+}
+
+model Invoice {
+  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category            InvoiceCategory
+  departmentId        String              @map("department_id") @db.Uuid
+  department          Department          @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  vendorName          String              @map("vendor_name") @db.VarChar(255)
+  invoiceNumber       String?             @map("invoice_number") @db.VarChar(100)
+  invoiceDate         DateTime            @map("invoice_date") @db.Date
+  quantity            Decimal             @db.Decimal(12, 4)
+  unit                String              @db.VarChar(50)
+  amount              Decimal             @db.Decimal(12, 2)
+  currency            String              @default("USD") @db.Char(3)
+  attachmentUrl       String?             @map("attachment_url") @db.VarChar(500)
+  importBatchId       String?             @map("import_batch_id") @db.Uuid
+  importBatch         InvoiceImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  carbonTransactionId String?             @unique @map("carbon_transaction_id") @db.Uuid
+  carbonTransaction   CarbonTransaction?  @relation(fields: [carbonTransactionId], references: [id], onDelete: SetNull)
+  createdByUserId     String              @map("created_by_user_id") @db.Uuid
+  createdByUser       User                @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  active              Boolean             @default(true)
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([departmentId, invoiceDate], map: "idx_invoices_dept_date")
+  @@index([category, invoiceDate], map: "idx_invoices_category_date")
+  @@index([importBatchId], map: "idx_invoices_import_batch")
+  @@map("invoices")
+}
+
+model InvoiceImportBatch {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fileName         String   @map("file_name") @db.VarChar(255)
+  uploadedByUserId String   @map("uploaded_by_user_id") @db.Uuid
+  uploadedByUser   User     @relation(fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  totalRows        Int      @default(0) @map("total_rows")
+  successRows      Int      @default(0) @map("success_rows")
+  failedRows       Int      @default(0) @map("failed_rows")
+  errorReport      Json?    @map("error_report")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  invoices Invoice[]
+
+  @@map("invoice_import_batches")
+}
+
+model EmployeeMonthlyEmission {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId          String   @map("employee_id") @db.Uuid
+  employee            Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  periodYear          Int      @map("period_year")
+  periodMonth         Int      @map("period_month")
+  attendedDays        Int      @default(0) @map("attended_days")
+  totalDistanceKm     Decimal  @default(0) @map("total_distance_km") @db.Decimal(10, 2)
+  totalEmissionKgCo2e Decimal  @default(0) @map("total_emission_kgco2e") @db.Decimal(14, 4)
+  lastRecalculatedAt  DateTime @default(now()) @map("last_recalculated_at") @db.Timestamptz
+  version             Int      @default(0)
+
+  @@unique([employeeId, periodYear, periodMonth], name: "uq_employee_monthly_emission")
+  @@index([periodYear, periodMonth], map: "idx_employee_monthly_emission_period")
+  @@map("employee_monthly_emissions")
 }
 
 model SustainabilityGoal {

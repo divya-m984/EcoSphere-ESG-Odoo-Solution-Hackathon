@@ -10,7 +10,15 @@
  *   npx prisma db seed
  */
 
-import { PrismaClient, UserRole, RewardStatus } from '@prisma/client';
+import {
+  PrismaClient,
+  UserRole,
+  RewardStatus,
+  TransportMode,
+  InvoiceCategory,
+  AttendanceStatus,
+  EmissionSource,
+} from '@prisma/client';
 import { randomBytes, scryptSync } from 'crypto';
 
 const prisma = new PrismaClient();
@@ -163,6 +171,188 @@ async function main() {
   const existingRewards = await prisma.reward.count();
   if (existingRewards === 0) {
     await prisma.reward.createMany({ data: rewards });
+  }
+
+  // ── Carbon emissions: emission factors ─────────────────────────────────────
+  const currentYear = new Date().getUTCFullYear();
+
+  const transportFactors: { mode: TransportMode; value: number }[] = [
+    { mode: TransportMode.Car_Petrol, value: 0.192 },
+    { mode: TransportMode.Car_Diesel, value: 0.171 },
+    { mode: TransportMode.Car_Electric, value: 0.053 },
+    { mode: TransportMode.Motorcycle, value: 0.113 },
+    { mode: TransportMode.Bus, value: 0.105 },
+    { mode: TransportMode.Train, value: 0.041 },
+    { mode: TransportMode.Bicycle, value: 0 },
+    { mode: TransportMode.Walk, value: 0 },
+    { mode: TransportMode.Carpool, value: 0.096 },
+  ];
+
+  for (const { mode, value } of transportFactors) {
+    await prisma.emissionFactor.upsert({
+      where: {
+        uq_emission_factors_lookup: { activityType: mode, region: 'US', unit: 'km', validYear: currentYear },
+      },
+      update: {},
+      create: {
+        activityType: mode,
+        unit: 'km',
+        region: 'US',
+        factorValue: value,
+        source: EmissionSource.DEFRA,
+        validYear: currentYear,
+        referenceUrl: 'https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2024',
+      },
+    });
+  }
+
+  const invoiceFactors: { category: InvoiceCategory; unit: string; value: number }[] = [
+    { category: InvoiceCategory.Electricity, unit: 'kWh', value: 0.4 },
+    { category: InvoiceCategory.Fuel, unit: 'liter', value: 2.31 },
+    { category: InvoiceCategory.Diesel, unit: 'liter', value: 2.68 },
+    { category: InvoiceCategory.Petrol, unit: 'liter', value: 2.31 },
+    { category: InvoiceCategory.Natural_Gas, unit: 'therm', value: 5.3 },
+    { category: InvoiceCategory.Air_Travel, unit: 'km', value: 0.15 },
+    { category: InvoiceCategory.Hotel, unit: 'room-night', value: 20 },
+    { category: InvoiceCategory.Office_Purchases, unit: 'USD', value: 0.05 },
+    { category: InvoiceCategory.Waste_Disposal, unit: 'kg', value: 0.45 },
+  ];
+
+  for (const { category, unit, value } of invoiceFactors) {
+    await prisma.emissionFactor.upsert({
+      where: {
+        uq_emission_factors_lookup: { activityType: category, region: 'US', unit, validYear: currentYear },
+      },
+      update: {},
+      create: {
+        activityType: category,
+        unit,
+        region: 'US',
+        factorValue: value,
+        source: EmissionSource.DEFRA,
+        validYear: currentYear,
+        referenceUrl: 'https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2024',
+      },
+    });
+  }
+  console.log(`  Seeded ${transportFactors.length + invoiceFactors.length} emission factors for ${currentYear}`);
+
+  // ── Carbon emissions: employee commute profile + attendance ────────────────
+  const commuteProfile = await prisma.employeeCommuteProfile.upsert({
+    where: { employeeId: employee.id },
+    update: {},
+    create: {
+      employeeId: employee.id,
+      transportMode: TransportMode.Car_Petrol,
+      distanceKm: 12,
+      roundTrip: true,
+    },
+  });
+
+  const carFactor = await prisma.emissionFactor.findUniqueOrThrow({
+    where: {
+      uq_emission_factors_lookup: {
+        activityType: TransportMode.Car_Petrol,
+        region: 'US',
+        unit: 'km',
+        validYear: currentYear,
+      },
+    },
+  });
+
+  const now = new Date();
+  const periodsToSeed = [
+    { year: now.getUTCFullYear(), month: now.getUTCMonth() + 1 },
+    now.getUTCMonth() === 0
+      ? { year: now.getUTCFullYear() - 1, month: 12 }
+      : { year: now.getUTCFullYear(), month: now.getUTCMonth() },
+  ];
+
+  for (const { year, month } of periodsToSeed) {
+    const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    let attendedDays = 0;
+
+    for (let day = 1; day <= Math.min(daysInMonth, 20); day++) {
+      const date = new Date(Date.UTC(year, month - 1, day));
+      const dayOfWeek = date.getUTCDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) continue; // skip weekends
+
+      const status = day % 9 === 0 ? AttendanceStatus.Leave : day % 5 === 0 ? AttendanceStatus.WFH : AttendanceStatus.Present;
+
+      await prisma.attendance.upsert({
+        where: { uq_attendance_employee_date: { employeeId: employee.id, date } },
+        update: {},
+        create: { employeeId: employee.id, date, status },
+      });
+
+      if (status === AttendanceStatus.Present) attendedDays++;
+    }
+
+    const distancePerDay = Number(commuteProfile.distanceKm) * (commuteProfile.roundTrip ? 2 : 1);
+    const totalDistanceKm = distancePerDay * attendedDays;
+    const totalEmissionKgCo2e = totalDistanceKm * Number(carFactor.factorValue);
+
+    await prisma.employeeMonthlyEmission.upsert({
+      where: { uq_employee_monthly_emission: { employeeId: employee.id, periodYear: year, periodMonth: month } },
+      update: { attendedDays, totalDistanceKm, totalEmissionKgCo2e, lastRecalculatedAt: new Date() },
+      create: { employeeId: employee.id, periodYear: year, periodMonth: month, attendedDays, totalDistanceKm, totalEmissionKgCo2e },
+    });
+  }
+  console.log(`  Seeded commute profile and attendance for "${employee.name}" across ${periodsToSeed.length} months`);
+
+  // ── Carbon emissions: sample invoices (each auto-creates its CarbonTransaction) ─
+  const sampleInvoices: { category: InvoiceCategory; unit: string; vendorName: string; quantity: number; amount: number; monthsAgo: number }[] = [
+    { category: InvoiceCategory.Electricity, unit: 'kWh', vendorName: 'CityPower Utilities', quantity: 4200, amount: 630, monthsAgo: 0 },
+    { category: InvoiceCategory.Natural_Gas, unit: 'therm', vendorName: 'Metro Gas Co.', quantity: 180, amount: 220, monthsAgo: 0 },
+    { category: InvoiceCategory.Air_Travel, unit: 'km', vendorName: 'SkyLine Airlines', quantity: 3500, amount: 890, monthsAgo: 1 },
+    { category: InvoiceCategory.Office_Purchases, unit: 'USD', vendorName: 'OfficeMart', quantity: 1200, amount: 1200, monthsAgo: 1 },
+    { category: InvoiceCategory.Waste_Disposal, unit: 'kg', vendorName: 'GreenCycle Waste Mgmt', quantity: 850, amount: 340, monthsAgo: 0 },
+  ];
+
+  const existingInvoiceCount = await prisma.invoice.count();
+  if (existingInvoiceCount === 0) {
+    for (const inv of sampleInvoices) {
+      const invoiceDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - inv.monthsAgo, 10));
+      // Seed factors only exist for `currentYear` — use that for lookup even if
+      // monthsAgo pushed invoiceDate into the prior calendar year.
+      const factor = await prisma.emissionFactor.findUniqueOrThrow({
+        where: {
+          uq_emission_factors_lookup: {
+            activityType: inv.category,
+            region: 'US',
+            unit: inv.unit,
+            validYear: currentYear,
+          },
+        },
+      });
+      const calculatedEmission = inv.quantity * Number(factor.factorValue);
+
+      await prisma.invoice.create({
+        data: {
+          category: inv.category,
+          department: { connect: { id: dept.id } },
+          vendorName: inv.vendorName,
+          invoiceDate,
+          quantity: inv.quantity,
+          unit: inv.unit,
+          amount: inv.amount,
+          createdByUser: { connect: { id: adminUser.id } },
+          carbonTransaction: {
+            create: {
+              emissionFactor: { connect: { id: factor.id } },
+              factorValueSnapshot: factor.factorValue,
+              quantity: inv.quantity,
+              unit: inv.unit,
+              calculatedEmission,
+              department: { connect: { id: dept.id } },
+              txnDate: invoiceDate,
+              autoCalculated: true,
+            },
+          },
+        },
+      });
+    }
+    console.log(`  Seeded ${sampleInvoices.length} sample invoices with calculated emissions`);
   }
 
   console.log('Seeding complete.');
