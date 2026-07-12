@@ -27,13 +27,13 @@ import {
   Skeleton,
   Snackbar,
   Switch,
-  Tab,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  Tab,
   Tabs,
   TextField,
   Tooltip,
@@ -46,6 +46,8 @@ import StarIcon from '@mui/icons-material/Star';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import HistoryIcon from '@mui/icons-material/History';
+import StorefrontIcon from '@mui/icons-material/Storefront';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -69,14 +71,14 @@ function rewardChipProps(reward: Reward, balance: number): {
     return { label: 'Unavailable', color: 'default', canRedeem: false, reason: 'This reward is not currently available.' };
   }
   if (reward.status === 'Out_Of_Stock' || reward.stock === 0) {
-    return { label: 'Out of stock', color: 'error', canRedeem: false, reason: 'This reward is currently out of stock.' };
+    return { label: 'Out of Stock', color: 'error', canRedeem: false, reason: 'This reward is currently out of stock.' };
   }
   if (balance < reward.pointsRequired) {
     return {
-      label: `Need ${reward.pointsRequired - balance} more XP`,
+      label: `Need ${(reward.pointsRequired - balance).toLocaleString()} more XP`,
       color: 'warning',
       canRedeem: false,
-      reason: `You need ${reward.pointsRequired - balance} more XP to redeem this reward.`,
+      reason: `You need ${(reward.pointsRequired - balance).toLocaleString()} more XP to redeem this reward.`,
     };
   }
   return { label: 'Available', color: 'success', canRedeem: true };
@@ -86,23 +88,52 @@ function rewardChipProps(reward: Reward, balance: number): {
 
 function RewardCardSkeleton() {
   return (
-    <Card sx={{ borderRadius: '12px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: 'none', height: '100%' }}>
+    <Card sx={{ height: '100%' }}>
       <CardContent>
         <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          <Skeleton variant="circular" width={48} height={48} />
+          <Skeleton variant="rounded" width={56} height={56} />
           <Box sx={{ flex: 1 }}>
-            <Skeleton width="60%" height={24} />
-            <Skeleton width="40%" height={18} />
+            <Skeleton width="60%" height={22} />
+            <Skeleton width="35%" height={18} sx={{ mt: 0.5 }} />
           </Box>
         </Box>
-        <Skeleton width="100%" height={16} />
-        <Skeleton width="80%" height={16} />
+        <Skeleton width="100%" height={14} />
+        <Skeleton width="80%" height={14} sx={{ mt: 0.5 }} />
         <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-          <Skeleton width={80} height={28} />
-          <Skeleton width={80} height={28} />
+          <Skeleton width={80} height={26} />
+          <Skeleton width={70} height={26} />
         </Box>
       </CardContent>
+      <Box sx={{ px: 2, pb: 2 }}>
+        <Skeleton width="100%" height={36} />
+      </Box>
     </Card>
+  );
+}
+
+// ── Reward icon fallback ───────────────────────────────────────────────────────
+
+function RewardIconFallback({ canRedeem }: { canRedeem: boolean }) {
+  return (
+    <Box
+      sx={{
+        width: 56,
+        height: 56,
+        borderRadius: 2,
+        bgcolor: canRedeem ? 'primary.main' : 'action.disabledBackground',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}
+    >
+      <CardGiftcardIcon
+        sx={{
+          color: canRedeem ? 'primary.contrastText' : 'text.disabled',
+          fontSize: 28,
+        }}
+      />
+    </Box>
   );
 }
 
@@ -116,64 +147,84 @@ interface RewardCardProps {
 
 function RewardCard({ reward, balance, onRedeem }: RewardCardProps) {
   const { label, color, canRedeem, reason } = rewardChipProps(reward, balance);
+  const lowStock = reward.stock > 0 && reward.stock <= 5;
 
   return (
     <Card
       sx={{
-        borderRadius: '12px',
-        border: '1px solid rgba(0,0,0,0.06)',
-        boxShadow: 'none',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        opacity: reward.status === 'Inactive' ? 0.6 : 1,
-        transition: 'box-shadow 0.15s',
-        '&:hover': canRedeem ? { boxShadow: '0 4px 16px rgba(46,125,50,0.12)' } : {},
+        opacity: reward.status === 'Inactive' ? 0.65 : 1,
+        transition: 'box-shadow 0.15s, transform 0.1s',
+        '&:hover': canRedeem
+          ? { boxShadow: (t) => t.palette.mode === 'dark' ? '0 4px 20px rgba(56,189,248,0.15)' : '0 4px 16px rgba(74,107,138,0.14)', transform: 'translateY(-1px)' }
+          : {},
       }}
     >
-      <CardContent sx={{ flex: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
-          <Avatar sx={{ bgcolor: canRedeem ? 'primary.light' : 'action.disabledBackground', width: 48, height: 48 }}>
-            <CardGiftcardIcon sx={{ color: canRedeem ? 'primary.main' : 'text.disabled' }} />
-          </Avatar>
+      <CardContent sx={{ flex: 1, pb: 1 }}>
+        {/* Header row: icon + name/status */}
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: 1.5 }}>
+          <RewardIconFallback canRedeem={canRedeem} />
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="subtitle1" fontWeight={700} noWrap>
+            {/* Category — API does not provide category; shown as placeholder */}
+            <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.68rem' }}>
+              Reward
+            </Typography>
+            <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ lineHeight: 1.3 }}>
               {reward.name}
             </Typography>
-            <Chip label={label} color={color} size="small" sx={{ borderRadius: '6px', fontSize: '0.72rem', mt: 0.5 }} />
+            <Chip
+              label={label}
+              color={color}
+              size="small"
+              sx={{ mt: 0.5, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+            />
           </Box>
         </Box>
 
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: 40 }}>
+        {/* Description */}
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mb: 1.5, minHeight: 36, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+        >
           {reward.description}
         </Typography>
 
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        {/* XP cost + stock */}
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
           <Chip
-            icon={<StarIcon sx={{ fontSize: '0.9rem !important' }} />}
-            label={`${reward.pointsRequired} XP`}
+            icon={<StarIcon sx={{ fontSize: '0.85rem !important' }} />}
+            label={`${reward.pointsRequired.toLocaleString()} XP`}
             size="small"
             color="warning"
             variant="outlined"
-            sx={{ borderRadius: '6px', fontSize: '0.75rem' }}
+            sx={{ fontSize: '0.75rem', fontWeight: 700 }}
           />
-          <Chip
-            label={reward.stock > 0 ? `${reward.stock} left` : 'No stock'}
-            size="small"
-            variant="outlined"
-            sx={{ borderRadius: '6px', fontSize: '0.75rem', color: 'text.secondary' }}
-          />
+          {reward.stock > 0 ? (
+            <Chip
+              label={lowStock ? `Only ${reward.stock} left!` : `${reward.stock} in stock`}
+              size="small"
+              variant="outlined"
+              color={lowStock ? 'warning' : 'default'}
+              sx={{ fontSize: '0.72rem' }}
+            />
+          ) : (
+            <Chip label="No stock" size="small" color="error" variant="outlined" sx={{ fontSize: '0.72rem' }} />
+          )}
         </Box>
 
+        {/* Insufficient XP or other reason note */}
         {!canRedeem && reason && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5, fontStyle: 'italic' }}>
+          <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mt: 1, fontStyle: 'italic', lineHeight: 1.3 }}>
             {reason}
           </Typography>
         )}
       </CardContent>
 
       <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
-        <Tooltip title={canRedeem ? '' : (reason ?? '')}>
+        <Tooltip title={canRedeem ? '' : (reason ?? '')} arrow>
           <span style={{ width: '100%' }}>
             <Button
               fullWidth
@@ -181,20 +232,44 @@ function RewardCard({ reward, balance, onRedeem }: RewardCardProps) {
               color="primary"
               disabled={!canRedeem}
               onClick={() => onRedeem(reward)}
-              sx={{
-                borderRadius: '8px',
-                fontWeight: 600,
-                bgcolor: canRedeem ? '#2E7D32' : undefined,
-                '&:hover': canRedeem ? { bgcolor: '#1B5E20' } : undefined,
-                '&.Mui-disabled': { bgcolor: 'transparent' },
-              }}
+              sx={{ fontWeight: 600, py: 0.75 }}
+              aria-label={`Redeem ${reward.name} for ${reward.pointsRequired} XP`}
             >
-              Redeem
+              {canRedeem ? 'Redeem Reward' : 'Redeem'}
             </Button>
           </span>
         </Tooltip>
       </CardActions>
     </Card>
+  );
+}
+
+// ── XP stats banner ───────────────────────────────────────────────────────────
+
+interface XpStatProps {
+  label: string;
+  value: string | number;
+  loading?: boolean;
+  accent?: boolean;
+}
+
+function XpStat({ label, value, loading, accent }: XpStatProps) {
+  return (
+    <Box sx={{ textAlign: 'center', px: 2 }}>
+      <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.68rem', display: 'block' }}>
+        {label}
+      </Typography>
+      {loading ? (
+        <Skeleton width={80} height={32} sx={{ mx: 'auto' }} />
+      ) : (
+        <Typography variant="h5" fontWeight={800} color={accent ? 'primary.main' : 'text.primary'} sx={{ lineHeight: 1.2 }}>
+          {typeof value === 'number' ? value.toLocaleString() : value}
+          <Typography component="span" variant="body2" fontWeight={600} color="text.secondary" sx={{ ml: 0.5 }}>
+            XP
+          </Typography>
+        </Typography>
+      )}
+    </Box>
   );
 }
 
@@ -214,69 +289,85 @@ function ConfirmDialog({ open, reward, balance, loading, onConfirm, onCancel }: 
   const after = balance - reward.pointsRequired;
 
   return (
-    <Dialog open={open} onClose={loading ? undefined : onCancel} maxWidth="xs" fullWidth
-      PaperProps={{ sx: { borderRadius: '12px' } }}>
+    <Dialog open={open} onClose={loading ? undefined : onCancel} maxWidth="xs" fullWidth>
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h6" fontWeight={700}>Confirm Redemption</Typography>
         {!loading && (
-          <IconButton size="small" onClick={onCancel} aria-label="close">
+          <IconButton size="small" onClick={onCancel} aria-label="close dialog">
             <CloseIcon fontSize="small" />
           </IconButton>
         )}
       </DialogTitle>
+
       <DialogContent dividers>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, bgcolor: 'rgba(46,125,50,0.06)', borderRadius: '8px' }}>
-            <Avatar sx={{ bgcolor: 'primary.light', width: 40, height: 40 }}>
-              <CardGiftcardIcon color="primary" />
+          {/* Reward preview */}
+          <Box sx={{
+            display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5,
+            bgcolor: 'action.hover', borderRadius: 2,
+          }}>
+            <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', width: 40, height: 40 }}>
+              <CardGiftcardIcon />
             </Avatar>
-            <Typography variant="subtitle2" fontWeight={700}>{reward.name}</Typography>
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700}>{reward.name}</Typography>
+              <Typography variant="caption" color="text.secondary">{reward.description}</Typography>
+            </Box>
           </Box>
 
+          {/* Cost + balance grid */}
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-            <Box sx={{ p: 1.5, bgcolor: 'rgba(0,0,0,0.03)', borderRadius: '8px', textAlign: 'center' }}>
-              <Typography variant="caption" color="text.secondary" display="block">Cost</Typography>
-              <Typography variant="subtitle1" fontWeight={700} color="warning.main">
-                -{reward.pointsRequired} XP
+            <Box sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 2, textAlign: 'center' }}>
+              <Typography variant="caption" color="text.secondary" display="block" fontWeight={600}>Cost</Typography>
+              <Typography variant="subtitle1" fontWeight={800} color="warning.main">
+                -{reward.pointsRequired.toLocaleString()} XP
               </Typography>
             </Box>
-            <Box sx={{ p: 1.5, bgcolor: 'rgba(0,0,0,0.03)', borderRadius: '8px', textAlign: 'center' }}>
-              <Typography variant="caption" color="text.secondary" display="block">Current Balance</Typography>
-              <Typography variant="subtitle1" fontWeight={700}>{balance} XP</Typography>
+            <Box sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 2, textAlign: 'center' }}>
+              <Typography variant="caption" color="text.secondary" display="block" fontWeight={600}>Current Balance</Typography>
+              <Typography variant="subtitle1" fontWeight={800}>{balance.toLocaleString()} XP</Typography>
             </Box>
           </Box>
 
           <Divider />
 
-          <Box sx={{ textAlign: 'center', p: 1 }}>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+          <Box sx={{ textAlign: 'center', py: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }} fontWeight={600}>
               Balance after redemption
             </Typography>
-            <Typography variant="h5" fontWeight={700} color={after >= 0 ? 'success.main' : 'error.main'}>
-              {after} XP
+            <Typography variant="h4" fontWeight={800} color={after >= 0 ? 'success.main' : 'error.main'}>
+              {after.toLocaleString()}
+              <Typography component="span" variant="body1" color="text.secondary" sx={{ ml: 0.5 }}>XP</Typography>
             </Typography>
           </Box>
         </Box>
       </DialogContent>
+
       <DialogActions sx={{ p: 2, gap: 1 }}>
-        <Button variant="outlined" onClick={onCancel} disabled={loading}
-          sx={{ flex: 1, borderRadius: '8px', borderColor: 'divider', color: 'text.secondary' }}>
+        <Button
+          variant="outlined"
+          onClick={onCancel}
+          disabled={loading}
+          sx={{ flex: 1, color: 'text.secondary', borderColor: 'divider' }}
+        >
           Cancel
         </Button>
         <Button
           variant="contained"
+          color="primary"
           onClick={onConfirm}
           disabled={loading}
-          sx={{ flex: 1, borderRadius: '8px', bgcolor: '#2E7D32', '&:hover': { bgcolor: '#1B5E20' } }}
+          sx={{ flex: 1, fontWeight: 700 }}
+          aria-label="Confirm redemption"
         >
-          {loading ? <CircularProgress size={20} color="inherit" /> : 'Confirm'}
+          {loading ? <CircularProgress size={20} color="inherit" /> : 'Confirm Redemption'}
         </Button>
       </DialogActions>
     </Dialog>
   );
 }
 
-// ── Redemption history table ──────────────────────────────────────────────────
+// ── Redemption history ────────────────────────────────────────────────────────
 
 interface HistoryProps {
   redemptions: RewardRedemption[];
@@ -287,22 +378,24 @@ interface HistoryProps {
 function RedemptionHistory({ redemptions, loading, error }: HistoryProps) {
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
         <CircularProgress size={32} />
       </Box>
     );
   }
 
   if (error) {
-    return <Alert severity="error" sx={{ borderRadius: '8px' }}>{error}</Alert>;
+    return <Alert severity="error">{error}</Alert>;
   }
 
   if (redemptions.length === 0) {
     return (
-      <Box sx={{ textAlign: 'center', py: 6 }}>
-        <CardGiftcardIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-        <Typography color="text.secondary">No redemptions yet</Typography>
-        <Typography variant="caption" color="text.disabled">Redeem your first reward to see it here</Typography>
+      <Box sx={{ textAlign: 'center', py: 8 }}>
+        <CardGiftcardIcon sx={{ fontSize: 52, color: 'text.disabled', mb: 1.5 }} />
+        <Typography variant="h6" color="text.secondary" fontWeight={600}>No redemptions yet</Typography>
+        <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>
+          Redeem your first reward from the Catalogue tab
+        </Typography>
       </Box>
     );
   }
@@ -310,23 +403,30 @@ function RedemptionHistory({ redemptions, loading, error }: HistoryProps) {
   return (
     <>
       {/* Desktop table */}
-      <TableContainer component={Paper} elevation={0} sx={{ display: { xs: 'none', sm: 'block' } }}>
+      <TableContainer component={Paper} elevation={0} sx={{ display: { xs: 'none', sm: 'block' }, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
         <Table>
-          <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+          <TableHead>
             <TableRow>
-              <TableCell><Typography variant="caption" fontWeight={700} color="text.secondary">REWARD</Typography></TableCell>
-              <TableCell align="right"><Typography variant="caption" fontWeight={700} color="text.secondary">POINTS</Typography></TableCell>
-              <TableCell><Typography variant="caption" fontWeight={700} color="text.secondary">DATE</Typography></TableCell>
-              <TableCell><Typography variant="caption" fontWeight={700} color="text.secondary">STATUS</Typography></TableCell>
-              <TableCell><Typography variant="caption" fontWeight={700} color="text.secondary">REF</Typography></TableCell>
+              {['Reward', 'XP Cost', 'Date', 'Status', 'Ref'].map((h) => (
+                <TableCell key={h} align={h === 'XP Cost' ? 'right' : 'left'}>
+                  <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {h}
+                  </Typography>
+                </TableCell>
+              ))}
             </TableRow>
           </TableHead>
           <TableBody>
             {redemptions.map((r) => (
               <TableRow key={r.id} hover>
-                <TableCell sx={{ fontWeight: 600 }}>{r.rewardName}</TableCell>
+                <TableCell>
+                  <Typography variant="body2" fontWeight={600}>{r.rewardName}</Typography>
+                  <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', maxWidth: 260 }}>
+                    {r.rewardDescription}
+                  </Typography>
+                </TableCell>
                 <TableCell align="right">
-                  <Typography color="error.main" fontWeight={700}>-{r.pointsDeducted} XP</Typography>
+                  <Typography color="error.main" fontWeight={700} variant="body2">-{r.pointsDeducted.toLocaleString()} XP</Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
@@ -334,7 +434,7 @@ function RedemptionHistory({ redemptions, loading, error }: HistoryProps) {
                   </Typography>
                 </TableCell>
                 <TableCell>
-                  <Chip label={r.status} color="success" size="small" sx={{ borderRadius: '6px', fontSize: '0.72rem' }} />
+                  <Chip label={r.status} color="success" size="small" sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
                 </TableCell>
                 <TableCell>
                   <Typography variant="caption" color="text.disabled" sx={{ fontFamily: 'monospace' }}>
@@ -350,7 +450,7 @@ function RedemptionHistory({ redemptions, loading, error }: HistoryProps) {
       {/* Mobile list */}
       <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexDirection: 'column', gap: 1.5 }}>
         {redemptions.map((r) => (
-          <Card key={r.id} sx={{ borderRadius: '10px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: 'none', p: 1.5 }}>
+          <Card key={r.id} sx={{ p: 1.5 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <Box>
                 <Typography variant="subtitle2" fontWeight={700}>{r.rewardName}</Typography>
@@ -358,10 +458,10 @@ function RedemptionHistory({ redemptions, loading, error }: HistoryProps) {
                   {new Date(r.redeemedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </Typography>
               </Box>
-              <Typography color="error.main" fontWeight={700} variant="body2">-{r.pointsDeducted} XP</Typography>
+              <Typography color="error.main" fontWeight={700} variant="body2">-{r.pointsDeducted.toLocaleString()} XP</Typography>
             </Box>
-            <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
-              <Chip label={r.status} color="success" size="small" sx={{ borderRadius: '6px', fontSize: '0.7rem' }} />
+            <Box sx={{ mt: 1 }}>
+              <Chip label={r.status} color="success" size="small" sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
             </Box>
           </Card>
         ))}
@@ -376,12 +476,13 @@ export default function Rewards() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Tab
+  // Tab: 0 = Catalogue, 1 = My Redemptions
   const [tab, setTab] = useState(0);
 
   // Catalogue state
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [loadingRewards, setLoadingRewards] = useState(true);
   const [rewardsError, setRewardsError] = useState<string | null>(null);
@@ -395,7 +496,7 @@ export default function Rewards() {
   const [balance, setBalance] = useState<XpBalance | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(false);
 
-  // Redemptions state
+  // Redemptions state (loaded eagerly for stats)
   const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
   const [loadingRedemptions, setLoadingRedemptions] = useState(false);
   const [redemptionsError, setRedemptionsError] = useState<string | null>(null);
@@ -404,8 +505,7 @@ export default function Rewards() {
   const [confirmReward, setConfirmReward] = useState<Reward | null>(null);
   const [redeemLoading, setRedeemLoading] = useState(false);
 
-  // Idempotency: one UUID is generated per dialog session and reused on retry.
-  // Cleared on success or explicit cancel; kept across retries after a network error.
+  // Idempotency key — one UUID per dialog session, reused on retry
   const pendingIdempotencyKeyRef = useRef<string | null>(null);
 
   // Snackbar
@@ -413,8 +513,9 @@ export default function Rewards() {
     open: false, message: '', severity: 'success',
   });
 
-  // Debounce search
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Data loading ─────────────────────────────────────────────────────────
 
   const loadBalance = useCallback((signal?: AbortSignal) => {
     setLoadingBalance(true);
@@ -422,6 +523,18 @@ export default function Rewards() {
       .then((b) => setBalance(b))
       .catch(() => {})
       .finally(() => setLoadingBalance(false));
+  }, []);
+
+  const loadRedemptions = useCallback((signal?: AbortSignal) => {
+    setLoadingRedemptions(true);
+    setRedemptionsError(null);
+    fetchMyRedemptions(signal)
+      .then(setRedemptions)
+      .catch((err: unknown) => {
+        if ((err as any)?.name === 'CanceledError') return;
+        setRedemptionsError(extractErrorMessage(err, 'Failed to load redemption history'));
+      })
+      .finally(() => setLoadingRedemptions(false));
   }, []);
 
   const loadRewards = useCallback(
@@ -441,6 +554,7 @@ export default function Rewards() {
         .then((result) => {
           setRewards(result.data);
           setTotalPages(result.meta.totalPages);
+          setTotalCount(result.meta.total);
         })
         .catch((err: unknown) => {
           if ((err as any)?.name === 'CanceledError') return;
@@ -451,137 +565,176 @@ export default function Rewards() {
     [search, availableOnly, sortByPoints, page],
   );
 
-  const loadRedemptions = useCallback((signal?: AbortSignal) => {
-    setLoadingRedemptions(true);
-    setRedemptionsError(null);
-    fetchMyRedemptions(signal)
-      .then(setRedemptions)
-      .catch((err: unknown) => {
-        if ((err as any)?.name === 'CanceledError') return;
-        setRedemptionsError(extractErrorMessage(err, 'Failed to load redemption history'));
-      })
-      .finally(() => setLoadingRedemptions(false));
-  }, []);
-
   // Initial load
   useEffect(() => {
     const controller = new AbortController();
     loadRewards(controller.signal);
     if (user) {
       loadBalance(controller.signal);
+      loadRedemptions(controller.signal); // load eagerly for stats
     }
     return () => controller.abort();
-  }, [loadRewards, loadBalance, user]);
+  }, [loadRewards, loadBalance, loadRedemptions, user]);
 
-  // Load redemptions when switching to history tab
-  useEffect(() => {
-    if (tab === 1 && user) {
-      const controller = new AbortController();
-      loadRedemptions(controller.signal);
-      return () => controller.abort();
-    }
-  }, [tab, user, loadRedemptions]);
-
-  // Debounce search input
+  // Search debounce
   const handleSearchChange = (value: string) => {
     setSearch(value);
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(() => setPage(1), 400);
   };
 
+  // ── Redemption flow ──────────────────────────────────────────────────────
+
   const handleRedeem = (reward: Reward) => {
-    // Generate a fresh idempotency key when the dialog opens for a new redemption
     pendingIdempotencyKeyRef.current = crypto.randomUUID();
     setConfirmReward(reward);
   };
 
   const handleConfirmRedeem = async () => {
     if (!confirmReward || redeemLoading) return;
-    // Reuse the same key if the user retries after a network error (dialog stays open)
     const idempotencyKey = pendingIdempotencyKeyRef.current ?? crypto.randomUUID();
     pendingIdempotencyKeyRef.current = idempotencyKey;
     setRedeemLoading(true);
     try {
       const result = await redeemReward(confirmReward.id, idempotencyKey);
-      // Success — clear key and close dialog
       pendingIdempotencyKeyRef.current = null;
       setConfirmReward(null);
       setBalance({ employeeId: result.balance.current.toString(), balance: result.balance.current });
-      // Refresh rewards to show updated stock
       loadRewards();
-      if (tab === 1) loadRedemptions();
+      loadRedemptions(); // refresh redemptions for stats
       setSnack({
         open: true,
-        message: `Redeemed "${confirmReward.name}" — ${result.balance.deducted} XP deducted. New balance: ${result.balance.current} XP`,
+        message: `Redeemed "${confirmReward.name}" — ${result.balance.deducted} XP deducted. New balance: ${result.balance.current.toLocaleString()} XP`,
         severity: 'success',
       });
     } catch (err) {
-      // Keep dialog open so the user can retry with the same idempotency key.
-      // The snackbar shows the error inline without closing the dialog.
+      // Keep dialog open so user can retry with same idempotency key
       setSnack({ open: true, message: extractErrorMessage(err), severity: 'error' });
     } finally {
       setRedeemLoading(false);
     }
   };
 
-  const currentBalance = balance?.balance ?? 0;
+  // ── Derived XP stats ─────────────────────────────────────────────────────
+
+  const availableXp = balance?.balance ?? 0;
+  const redeemedXp = redemptions.reduce((sum, r) => sum + r.pointsDeducted, 0);
+  const lifetimeXp = availableXp + redeemedXp;
 
   return (
-    <Box sx={{ p: 1 }}>
-      {/* Breadcrumbs */}
+    <Box>
+      {/* Breadcrumb + manage button */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />}>
-          <Link underline="hover" color="inherit" href="#"
-            onClick={(e) => { e.preventDefault(); navigate('/gamification'); }}>
+          <Link
+            underline="hover"
+            color="inherit"
+            href="#"
+            onClick={(e) => { e.preventDefault(); navigate('/gamification'); }}
+            sx={{ fontSize: '0.875rem' }}
+          >
             Gamification
           </Link>
-          <Typography color="text.primary">Rewards</Typography>
+          <Typography color="text.primary" sx={{ fontSize: '0.875rem' }}>Rewards Catalogue</Typography>
         </Breadcrumbs>
 
         {(user?.role === 'Admin' || user?.role === 'ESG_Manager') && (
-          <Button variant="outlined" size="small" sx={{ borderRadius: '8px' }}
-            onClick={() => navigate('/gamification/rewards/manage')}>
+          <Button
+            variant="outlined"
+            size="small"
+            color="primary"
+            onClick={() => navigate('/gamification/rewards/manage')}
+          >
             Manage Rewards
           </Button>
         )}
       </Box>
 
-      <Typography variant="h4" fontWeight={700} sx={{ mb: 1 }}>Rewards</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Redeem your earned XP for eco-friendly rewards
-      </Typography>
+      {/* Page header */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" fontWeight={700} color="text.primary" sx={{ mb: 0.5 }}>
+          Rewards Catalogue
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Redeem your earned XP for eco-friendly rewards and sustainable perks
+        </Typography>
+      </Box>
 
-      {/* XP Balance banner */}
+      {/* XP stats banner (employees only) */}
       {user && (
-        <Card sx={{ mb: 3, p: 2, borderRadius: '12px', border: '1px solid rgba(46,125,50,0.2)', bgcolor: 'rgba(46,125,50,0.04)', boxShadow: 'none' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-            <Avatar sx={{ bgcolor: '#2E7D32', width: 44, height: 44 }}>
-              <EmojiEventsIcon />
-            </Avatar>
-            <Box>
-              <Typography variant="caption" color="text.secondary" display="block">Your XP Balance</Typography>
-              {loadingBalance ? (
-                <Skeleton width={100} height={32} />
-              ) : (
-                <Typography variant="h5" fontWeight={800} color="#2E7D32">
-                  {currentBalance.toLocaleString()} XP
-                </Typography>
-              )}
+        <Card sx={{ mb: 3, overflow: 'visible' }}>
+          <Box sx={{ p: { xs: 2, sm: 3 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+              {/* Left: icon + label */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', width: 44, height: 44 }}>
+                  <EmojiEventsIcon />
+                </Avatar>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700} color="text.primary">Your XP Balance</Typography>
+                  <Typography variant="caption" color="text.secondary">Earned through challenges and CSR activities</Typography>
+                </Box>
+              </Box>
+
+              {/* Stats */}
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: { xs: 1, sm: 2 },
+                flexWrap: 'wrap',
+              }}>
+                <XpStat label="Available" value={availableXp} loading={loadingBalance} accent />
+
+                <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
+
+                <XpStat label="Redeemed" value={redeemedXp} loading={loadingRedemptions} />
+
+                <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
+
+                <XpStat label="Lifetime Earned" value={lifetimeXp} loading={loadingBalance || loadingRedemptions} />
+              </Box>
+
+              {/* History shortcut */}
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<HistoryIcon />}
+                onClick={() => setTab(1)}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                History
+              </Button>
             </Box>
           </Box>
         </Card>
       )}
 
       {/* Tabs */}
-      <Tabs value={tab} onChange={(_e, v) => setTab(v)} sx={{ mb: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <Tab label="Catalogue" sx={{ fontWeight: 600, textTransform: 'none' }} />
-        {user && <Tab label="My Redemptions" sx={{ fontWeight: 600, textTransform: 'none' }} />}
+      <Tabs
+        value={tab}
+        onChange={(_e, v) => setTab(v)}
+        sx={{ mb: 3, borderBottom: '1px solid', borderColor: 'divider' }}
+      >
+        <Tab
+          label="Catalogue"
+          icon={<StorefrontIcon fontSize="small" />}
+          iconPosition="start"
+          sx={{ fontWeight: 600, textTransform: 'none', minHeight: 48 }}
+        />
+        {user && (
+          <Tab
+            label="My Redemptions"
+            icon={<HistoryIcon fontSize="small" />}
+            iconPosition="start"
+            sx={{ fontWeight: 600, textTransform: 'none', minHeight: 48 }}
+          />
+        )}
       </Tabs>
 
-      {/* ── Catalogue tab ── */}
+      {/* ── Catalogue tab ─────────────────────────────────────────────────────── */}
       {tab === 0 && (
         <>
-          {/* Filters */}
+          {/* Filters row */}
           <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
             <TextField
               size="small"
@@ -589,35 +742,53 @@ export default function Rewards() {
               value={search}
               onChange={(e) => handleSearchChange(e.target.value)}
               InputProps={{
-                startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" color="action" /></InputAdornment>,
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" color="action" />
+                  </InputAdornment>
+                ),
               }}
-              sx={{ width: 220, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+              sx={{ width: { xs: '100%', sm: 220 } }}
             />
+
             <FormControlLabel
-              control={<Switch checked={availableOnly} onChange={(e) => { setAvailableOnly(e.target.checked); setPage(1); }} color="primary" size="small" />}
+              control={
+                <Switch
+                  checked={availableOnly}
+                  onChange={(e) => { setAvailableOnly(e.target.checked); setPage(1); }}
+                  color="primary"
+                  size="small"
+                />
+              }
               label={<Typography variant="body2">Available only</Typography>}
             />
+
             <Select
               size="small"
               value={sortByPoints}
               onChange={(e) => { setSortByPoints(e.target.value as any); setPage(1); }}
               displayEmpty
-              sx={{ borderRadius: '8px', height: '38px', minWidth: 160 }}
+              sx={{ minWidth: 170, height: 38 }}
             >
               <MenuItem value="">Sort: Default</MenuItem>
-              <MenuItem value="asc">Points: Low to High</MenuItem>
-              <MenuItem value="desc">Points: High to Low</MenuItem>
+              <MenuItem value="asc">XP: Low to High</MenuItem>
+              <MenuItem value="desc">XP: High to Low</MenuItem>
             </Select>
+
+            {/* Result count */}
+            {!loadingRewards && (
+              <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
+                {totalCount} reward{totalCount !== 1 ? 's' : ''}
+              </Typography>
+            )}
           </Box>
 
-          {/* Error state */}
+          {/* Error */}
           {rewardsError && (
-            <Alert severity="error" sx={{ mb: 3, borderRadius: '8px' }}>
-              {rewardsError}
-            </Alert>
+            <Alert severity="error" sx={{ mb: 3 }}>{rewardsError}</Alert>
           )}
 
-          {/* Grid */}
+          {/* Rewards grid */}
           <Grid container spacing={2.5}>
             {loadingRewards
               ? Array.from({ length: 6 }).map((_, i) => (
@@ -628,16 +799,18 @@ export default function Rewards() {
               : rewards.length === 0
                 ? (
                   <Grid item xs={12}>
-                    <Box sx={{ textAlign: 'center', py: 8 }}>
-                      <CardGiftcardIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 2 }} />
-                      <Typography color="text.secondary" variant="h6">No rewards found</Typography>
-                      <Typography variant="caption" color="text.disabled">Try adjusting your filters</Typography>
+                    <Box sx={{ textAlign: 'center', py: 10 }}>
+                      <CardGiftcardIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                      <Typography variant="h6" color="text.secondary" fontWeight={600}>No rewards found</Typography>
+                      <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>
+                        Try adjusting your search or filters
+                      </Typography>
                     </Box>
                   </Grid>
                 )
                 : rewards.map((reward) => (
                   <Grid item xs={12} sm={6} lg={4} key={reward.id}>
-                    <RewardCard reward={reward} balance={currentBalance} onRedeem={handleRedeem} />
+                    <RewardCard reward={reward} balance={availableXp} onRedeem={handleRedeem} />
                   </Grid>
                 ))}
           </Grid>
@@ -657,16 +830,20 @@ export default function Rewards() {
         </>
       )}
 
-      {/* ── History tab ── */}
+      {/* ── Redemption history tab ────────────────────────────────────────────── */}
       {tab === 1 && user && (
-        <RedemptionHistory redemptions={redemptions} loading={loadingRedemptions} error={redemptionsError} />
+        <RedemptionHistory
+          redemptions={redemptions}
+          loading={loadingRedemptions}
+          error={redemptionsError}
+        />
       )}
 
       {/* Confirmation dialog */}
       <ConfirmDialog
         open={Boolean(confirmReward)}
         reward={confirmReward}
-        balance={currentBalance}
+        balance={availableXp}
         loading={redeemLoading}
         onConfirm={handleConfirmRedeem}
         onCancel={() => {
@@ -677,7 +854,7 @@ export default function Rewards() {
         }}
       />
 
-      {/* Snackbar feedback */}
+      {/* Snackbar */}
       <Snackbar
         open={snack.open}
         autoHideDuration={6000}
@@ -688,7 +865,7 @@ export default function Rewards() {
           severity={snack.severity}
           onClose={() => setSnack((s) => ({ ...s, open: false }))}
           iconMapping={{ success: <CheckCircleOutlineIcon /> }}
-          sx={{ borderRadius: '8px', minWidth: 320 }}
+          sx={{ minWidth: 320 }}
         >
           {snack.message}
         </Alert>

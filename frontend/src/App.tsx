@@ -1,16 +1,14 @@
-import { ThemeProvider, CssBaseline } from '@mui/material';
-import theme from '@/theme';
+import { ColorModeProvider } from '@/context/ColorModeContext';
 import { AuthProvider } from '@/hooks/useAuth';
 import AppRoutes from '@/routes';
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ColorModeProvider>
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>
-    </ThemeProvider>
+    </ColorModeProvider>
   );
 }
 

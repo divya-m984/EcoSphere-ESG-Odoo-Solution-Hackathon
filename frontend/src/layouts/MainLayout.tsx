@@ -44,17 +44,22 @@ import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import HelpIcon from '@mui/icons-material/HelpOutline';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useAuth } from '@/hooks/useAuth';
+import { useColorMode } from '@/context/ColorModeContext';
 import { useSidebar } from '@/hooks/useSidebar';
 import { SIDEBAR_WIDTH } from '@/utils/constants';
 import api from '@/services/api';
 
 export default function MainLayout() {
   const muiTheme = useTheme();
+  const isDark = muiTheme.palette.mode === 'dark';
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const { isOpen: mobileOpen, open: openDrawer, close: closeDrawer } = useSidebar(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const { user, logout } = useAuth();
+  const { toggleMode, effectiveMode } = useColorMode();
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
@@ -78,8 +83,6 @@ export default function MainLayout() {
 
   const isEmployee = user?.role === 'Employee';
 
-  // Determine active console context:
-  // For admins/managers, we use ESG Gamify mode for list views of Challenges, Tasks, Badges, Teams, Rewards.
   const isGamifyAdminPortal =
     !isEmployee &&
     (pathname === '/gamification' || pathname.startsWith('/gamification/')) &&
@@ -87,7 +90,6 @@ export default function MainLayout() {
     !/^\/gamification\/tasks\/[a-f0-9-]+/i.test(pathname) &&
     !/^\/gamification\/challenges\/[a-f0-9-]+/i.test(pathname);
 
-  // Determine active tab for Employee
   let activeTab = 'Dashboard';
   if (
     pathname.startsWith('/gamification/challenges') ||
@@ -99,7 +101,6 @@ export default function MainLayout() {
     activeTab = 'Community';
   }
 
-  // Determine top bar title text for admin
   let headerTitle = 'ESG Control';
   if (pathname.includes('/challenges/new') || /^\/gamification\/challenges\/[a-f0-9-]+/i.test(pathname)) {
     headerTitle = 'ESG Auditor';
@@ -119,94 +120,107 @@ export default function MainLayout() {
     ? user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
     : 'A';
 
-  // Navigation handlers
   const handleNav = (path: string) => {
     navigate(path);
     if (isMobile) closeDrawer();
   };
 
-  // Nav list styling
-  const itemSx = {
+  // Nav item styling — selected state is handled by MuiListItemButton theme override
+  const itemSx = { mb: 0.5 };
+
+  // ── Navigation menus ───────────────────────────────────────────────────────
+
+  const controlNavItems = [
+    { path: '/dashboard',      label: 'Dashboard',    icon: <DashboardIcon fontSize="small" /> },
+    { path: '/environmental',  label: 'Environment',  icon: <EcoIcon fontSize="small" /> },
+    { path: '/social',         label: 'Social',       icon: <GroupsIcon fontSize="small" /> },
+    { path: '/governance',     label: 'Governance',   icon: <AccountBalanceIcon fontSize="small" /> },
+    { path: '/gamification',   label: 'Gamification', icon: <EmojiEventsIcon fontSize="small" /> },
+    { path: '/leaderboard',    label: 'Leaderboard',  icon: <LeaderboardIcon fontSize="small" /> },
+    { path: '/reports',        label: 'Reports',      icon: <AssessmentIcon fontSize="small" /> },
+    { path: '/settings',       label: 'Settings',     icon: <SettingsIcon fontSize="small" /> },
+  ];
+
+  const gamifyNavItems = [
+    { path: '/gamification',          label: 'Dashboard',  icon: <DashboardIcon fontSize="small" /> },
+    { path: '/gamification/challenges', label: 'Challenges', icon: <EmojiEventsIcon fontSize="small" /> },
+    { path: '/gamification/tasks',    label: 'Tasks',      icon: <AssignmentIcon fontSize="small" /> },
+    { path: '/gamification/badges',   label: 'Badges',     icon: <MilitaryTechIcon fontSize="small" /> },
+    { path: '/gamification/teams',    label: 'Teams',      icon: <GroupsIcon fontSize="small" /> },
+    { path: '/leaderboard',           label: 'Leaderboard', icon: <LeaderboardIcon fontSize="small" /> },
+    { path: '/gamification/rewards',  label: 'Rewards',    icon: <CardGiftcardIcon fontSize="small" /> },
+    { path: '/reports',               label: 'Reports',    icon: <AssessmentIcon fontSize="small" /> },
+  ];
+
+  const employeeControlNavItems = [
+    { path: '/dashboard',              label: 'Dashboard',    icon: <DashboardIcon fontSize="small" /> },
+    { path: '/gamification/challenges', label: 'Gamification', icon: <EmojiEventsIcon fontSize="small" /> },
+    { path: '/environmental',          label: 'Environmental', icon: <EcoIcon fontSize="small" /> },
+    { path: '/social',                 label: 'Social',       icon: <GroupsIcon fontSize="small" /> },
+    { path: '/governance',             label: 'Governance',   icon: <AccountBalanceIcon fontSize="small" /> },
+    { path: '/reports',                label: 'Reports',      icon: <AssessmentIcon fontSize="small" /> },
+    { path: '/settings',               label: 'Settings',     icon: <SettingsIcon fontSize="small" /> },
+    { path: '#help',                   label: 'Help',         icon: <HelpIcon fontSize="small" /> },
+  ];
+
+  const employeeImpactNavItems = [
+    { path: '/environmental',          label: 'Environment', icon: <EcoIcon fontSize="small" />, badge: 6 },
+    { path: '/social',                 label: 'Social',      icon: <GroupsIcon fontSize="small" />, badge: 4 },
+    { path: '/governance',             label: 'Governance',  icon: <AccountBalanceIcon fontSize="small" />, badge: 2 },
+    { path: '/reports',                label: 'Reports',     icon: <AssessmentIcon fontSize="small" /> },
+    { path: '/gamification/challenges', label: 'Challenges', icon: <EmojiEventsIcon fontSize="small" /> },
+    { path: '/gamification/badges',    label: 'Badges',      icon: <MilitaryTechIcon fontSize="small" /> },
+    { path: '/leaderboard',            label: 'Leaderboard', icon: <LeaderboardIcon fontSize="small" /> },
+    { path: '/gamification/rewards',   label: 'Rewards',     icon: <CardGiftcardIcon fontSize="small" /> },
+    { path: '/settings',               label: 'Settings',    icon: <SettingsIcon fontSize="small" /> },
+    { path: '#support',                label: 'Support',     icon: <HelpIcon fontSize="small" /> },
+  ];
+
+  // ── Sidebar icon box style ─────────────────────────────────────────────────
+
+  const brandIconBoxSx = {
+    width: 38,
+    height: 38,
     borderRadius: '8px',
-    mb: 0.5,
-    '&.Mui-selected': {
-      bgcolor: '#2E7D32',
-      color: '#FFFFFF',
-      '& .MuiListItemIcon-root': { color: '#FFFFFF' },
-      '&:hover': { bgcolor: '#1B5E20' },
-    },
+    bgcolor: 'primary.main',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   };
 
-  // 1. ESG Control Menu Configuration (Admin/Manager)
-  const controlNavItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon fontSize="small" /> },
-    { path: '/environmental', label: 'Environment', icon: <EcoIcon fontSize="small" /> },
-    { path: '/social', label: 'Social', icon: <GroupsIcon fontSize="small" /> },
-    { path: '/governance', label: 'Governance', icon: <AccountBalanceIcon fontSize="small" /> },
-    { path: '/gamification', label: 'Gamification', icon: <EmojiEventsIcon fontSize="small" /> },
-    { path: '/leaderboard', label: 'Leaderboard', icon: <LeaderboardIcon fontSize="small" /> },
-    { path: '/reports', label: 'Reports', icon: <AssessmentIcon fontSize="small" /> },
-    { path: '/settings', label: 'Settings', icon: <SettingsIcon fontSize="small" /> },
-  ];
+  // ── Badge colour helper ────────────────────────────────────────────────────
 
-  // 2. ESG Gamify Menu Configuration (Admin/Manager)
-  const gamifyNavItems = [
-    { path: '/gamification', label: 'Dashboard', icon: <DashboardIcon fontSize="small" /> },
-    { path: '/gamification/challenges', label: 'Challenges', icon: <EmojiEventsIcon fontSize="small" /> },
-    { path: '/gamification/tasks', label: 'Tasks', icon: <AssignmentIcon fontSize="small" /> },
-    { path: '/gamification/badges', label: 'Badges', icon: <MilitaryTechIcon fontSize="small" /> },
-    { path: '/gamification/teams', label: 'Teams', icon: <GroupsIcon fontSize="small" /> },
-    { path: '/leaderboard', label: 'Leaderboard', icon: <LeaderboardIcon fontSize="small" /> },
-    { path: '/gamification/rewards', label: 'Rewards', icon: <CardGiftcardIcon fontSize="small" /> },
-    { path: '/reports', label: 'Reports', icon: <AssessmentIcon fontSize="small" /> },
-  ];
+  function badgeChipSx(label: string) {
+    if (label === 'Environment') {
+      return {
+        bgcolor: isDark ? 'rgba(52,211,153,0.15)' : '#E2F0D9',
+        color:   isDark ? '#34D399' : '#385723',
+      };
+    }
+    if (label === 'Social') {
+      return {
+        bgcolor: isDark ? 'rgba(251,191,36,0.15)' : '#FFF2CC',
+        color:   isDark ? '#FBBF24' : '#7F6000',
+      };
+    }
+    return {
+      bgcolor: isDark ? 'rgba(248,113,113,0.15)' : '#FCE4D6',
+      color:   isDark ? '#F87171' : '#C65911',
+    };
+  }
 
-  // 3. Employee Dashboard Sidebar Menu Configuration
-  const employeeControlNavItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon fontSize="small" /> },
-    { path: '/gamification/challenges', label: 'Gamification', icon: <EmojiEventsIcon fontSize="small" /> },
-    { path: '/environmental', label: 'Environmental', icon: <EcoIcon fontSize="small" /> },
-    { path: '/social', label: 'Social', icon: <GroupsIcon fontSize="small" /> },
-    { path: '/governance', label: 'Governance', icon: <AccountBalanceIcon fontSize="small" /> },
-    { path: '/reports', label: 'Reports', icon: <AssessmentIcon fontSize="small" /> },
-    { path: '/settings', label: 'Settings', icon: <SettingsIcon fontSize="small" /> },
-    { path: '#help', label: 'Help', icon: <HelpIcon fontSize="small" /> },
-  ];
-
-  // 4. Employee Impact/Community Sidebar Menu Configuration
-  const employeeImpactNavItems = [
-    { path: '/environmental', label: 'Environment', icon: <EcoIcon fontSize="small" />, badge: 6 },
-    { path: '/social', label: 'Social', icon: <GroupsIcon fontSize="small" />, badge: 4 },
-    { path: '/governance', label: 'Governance', icon: <AccountBalanceIcon fontSize="small" />, badge: 2 },
-    { path: '/reports', label: 'Reports', icon: <AssessmentIcon fontSize="small" /> },
-    { path: '/gamification/challenges', label: 'Challenges', icon: <EmojiEventsIcon fontSize="small" /> },
-    { path: '/gamification/badges', label: 'Badges', icon: <MilitaryTechIcon fontSize="small" /> },
-    { path: '/leaderboard', label: 'Leaderboard', icon: <LeaderboardIcon fontSize="small" /> },
-    { path: '/gamification/rewards', label: 'Rewards', icon: <CardGiftcardIcon fontSize="small" /> },
-    { path: '/settings', label: 'Settings', icon: <SettingsIcon fontSize="small" /> },
-    { path: '#support', label: 'Support', icon: <HelpIcon fontSize="small" /> },
-  ];
+  // ── Drawer content ─────────────────────────────────────────────────────────
 
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Sidebar Header branding */}
+      {/* Sidebar header branding */}
       <Box sx={{ px: 2.5, py: 2.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
         {isEmployee ? (
           activeTab === 'Dashboard' ? (
             <>
-              <Box
-                sx={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: '8px',
-                  bgcolor: '#2E7D32',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <EcoIcon sx={{ color: 'white', fontSize: 20 }} />
+              <Box sx={brandIconBoxSx}>
+                <EcoIcon sx={{ color: 'primary.contrastText', fontSize: 20 }} />
               </Box>
               <Box>
                 <Typography variant="subtitle1" fontWeight={750} color="text.primary" lineHeight={1.1}>
@@ -219,22 +233,11 @@ export default function MainLayout() {
             </>
           ) : (
             <>
-              <Box
-                sx={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: '8px',
-                  bgcolor: '#2E7D32',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <EmojiEventsIcon sx={{ color: 'white', fontSize: 20 }} />
+              <Box sx={brandIconBoxSx}>
+                <EmojiEventsIcon sx={{ color: 'primary.contrastText', fontSize: 20 }} />
               </Box>
               <Box>
-                <Typography variant="subtitle1" fontWeight={750} color="#2E7D32" lineHeight={1.1}>
+                <Typography variant="subtitle1" fontWeight={750} color="primary.main" lineHeight={1.1}>
                   ESG Pulse
                 </Typography>
                 <Typography variant="caption" color="text.secondary" fontWeight={600} lineHeight={1}>
@@ -245,22 +248,11 @@ export default function MainLayout() {
           )
         ) : isGamifyAdminPortal ? (
           <>
-            <Box
-              sx={{
-                width: 38,
-                height: 38,
-                borderRadius: '8px',
-                bgcolor: '#2E7D32',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <EmojiEventsIcon sx={{ color: 'white', fontSize: 20 }} />
+            <Box sx={brandIconBoxSx}>
+              <EmojiEventsIcon sx={{ color: 'primary.contrastText', fontSize: 20 }} />
             </Box>
             <Box>
-              <Typography variant="subtitle1" fontWeight={700} color="#2E7D32" lineHeight={1.1}>
+              <Typography variant="subtitle1" fontWeight={700} color="primary.main" lineHeight={1.1}>
                 ESG Gamify
               </Typography>
               <Typography variant="caption" color="text.secondary" fontWeight={600} lineHeight={1}>
@@ -270,19 +262,8 @@ export default function MainLayout() {
           </>
         ) : (
           <>
-            <Box
-              sx={{
-                width: 38,
-                height: 38,
-                borderRadius: '8px',
-                bgcolor: '#2E7D32',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <EcoIcon sx={{ color: 'white', fontSize: 20 }} />
+            <Box sx={brandIconBoxSx}>
+              <EcoIcon sx={{ color: 'primary.contrastText', fontSize: 20 }} />
             </Box>
             <Box>
               <Typography variant="subtitle1" fontWeight={700} color="text.primary" lineHeight={1.1}>
@@ -295,10 +276,10 @@ export default function MainLayout() {
           </>
         )}
       </Box>
-      <Divider sx={{ mb: 1 }} />
+      <Divider />
 
-      {/* Navigation Links list */}
-      <List sx={{ px: 1.5, flexGrow: 1 }}>
+      {/* Navigation list */}
+      <List sx={{ px: 1.5, flexGrow: 1, pt: 1 }}>
         {isEmployee ? (
           activeTab === 'Dashboard' ? (
             employeeControlNavItems.map((item) => {
@@ -335,18 +316,7 @@ export default function MainLayout() {
                           minWidth: 20,
                           fontSize: '0.75rem',
                           fontWeight: 700,
-                          bgcolor:
-                            item.label === 'Environment'
-                              ? '#E2F0D9'
-                              : item.label === 'Social'
-                              ? '#FFF2CC'
-                              : '#FCE4D6',
-                          color:
-                            item.label === 'Environment'
-                              ? '#385723'
-                              : item.label === 'Social'
-                              ? '#7F6000'
-                              : '#C65911',
+                          ...badgeChipSx(item.label),
                         }}
                       />
                     )}
@@ -388,22 +358,16 @@ export default function MainLayout() {
         )}
       </List>
 
-      {/* Bottom Button and Logs */}
+      {/* Bottom action button */}
       {isEmployee ? (
         <Box sx={{ p: 2 }}>
           <Button
             fullWidth
             variant="contained"
             color="primary"
-            startIcon={activeTab === 'Dashboard' ? <AddIcon /> : <AddIcon />}
+            startIcon={<AddIcon />}
             onClick={() => navigate('/reports')}
-            sx={{
-              borderRadius: '8px',
-              py: 1,
-              fontSize: '0.85rem',
-              bgcolor: '#1b4d3e',
-              '&:hover': { bgcolor: '#113027' },
-            }}
+            sx={{ borderRadius: '6px', py: 1, fontSize: '0.85rem' }}
           >
             {activeTab === 'Dashboard' ? 'Generate Report' : '+ Submit Report'}
           </Button>
@@ -417,13 +381,7 @@ export default function MainLayout() {
               color="primary"
               startIcon={<AddIcon />}
               onClick={() => navigate('/reports')}
-              sx={{
-                borderRadius: '8px',
-                py: 1,
-                fontSize: '0.85rem',
-                bgcolor: '#1b4d3e',
-                '&:hover': { bgcolor: '#113027' },
-              }}
+              sx={{ borderRadius: '6px', py: 1, fontSize: '0.85rem' }}
             >
               New Report
             </Button>
@@ -435,16 +393,14 @@ export default function MainLayout() {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Top Navbar */}
+      {/* Top app bar — bg driven by MuiAppBar theme override */}
       <AppBar
         position="fixed"
-        color="inherit"
         elevation={0}
         sx={{
           zIndex: (t) => t.zIndex.drawer + 1,
           width: { md: `calc(100% - ${SIDEBAR_WIDTH}px)` },
           ml: { md: `${SIDEBAR_WIDTH}px` },
-          borderBottom: '1px solid rgba(0,0,0,0.06)',
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between' }}>
@@ -454,7 +410,7 @@ export default function MainLayout() {
                 <MenuIcon />
               </IconButton>
             )}
-            <Typography variant="h6" fontWeight={750} color="#1b4d3e" sx={{ fontSize: '1.25rem' }}>
+            <Typography variant="h6" fontWeight={750} color="primary.main" sx={{ fontSize: '1.25rem' }}>
               {isEmployee
                 ? activeTab === 'Dashboard'
                   ? 'EcoSphere'
@@ -479,7 +435,6 @@ export default function MainLayout() {
                   '& .MuiOutlinedInput-root': {
                     height: 36,
                     borderRadius: '20px',
-                    bgcolor: '#F3F6F4',
                     '& fieldset': { border: 'none' },
                   },
                 }}
@@ -487,67 +442,39 @@ export default function MainLayout() {
             )}
           </Box>
 
-          {/* Employee Navigation Center Tabs */}
+          {/* Employee navigation tabs */}
           {isEmployee && !isMobile && (
             <Box sx={{ display: 'flex', gap: 3, mx: 'auto' }}>
-              <Button
-                component={Link}
-                to="/dashboard"
-                sx={{
-                  color: activeTab === 'Dashboard' ? '#2E7D32' : 'text.secondary',
-                  fontWeight: activeTab === 'Dashboard' ? 800 : 600,
-                  borderBottom: activeTab === 'Dashboard' ? '3px solid #2E7D32' : '3px solid transparent',
-                  borderRadius: 0,
-                  px: 1,
-                  py: 0.5,
-                  minWidth: 0,
-                  textTransform: 'none',
-                  fontSize: '0.95rem',
-                  '&:hover': { bgcolor: 'transparent', color: '#1B5E20' },
-                }}
-              >
-                Dashboard
-              </Button>
-              <Button
-                component={Link}
-                to="/gamification/challenges"
-                sx={{
-                  color: activeTab === 'Impact' ? '#2E7D32' : 'text.secondary',
-                  fontWeight: activeTab === 'Impact' ? 800 : 600,
-                  borderBottom: activeTab === 'Impact' ? '3px solid #2E7D32' : '3px solid transparent',
-                  borderRadius: 0,
-                  px: 1,
-                  py: 0.5,
-                  minWidth: 0,
-                  textTransform: 'none',
-                  fontSize: '0.95rem',
-                  '&:hover': { bgcolor: 'transparent', color: '#1B5E20' },
-                }}
-              >
-                Impact
-              </Button>
-              <Button
-                component={Link}
-                to="/leaderboard"
-                sx={{
-                  color: activeTab === 'Community' ? '#2E7D32' : 'text.secondary',
-                  fontWeight: activeTab === 'Community' ? 800 : 600,
-                  borderBottom: activeTab === 'Community' ? '3px solid #2E7D32' : '3px solid transparent',
-                  borderRadius: 0,
-                  px: 1,
-                  py: 0.5,
-                  minWidth: 0,
-                  textTransform: 'none',
-                  fontSize: '0.95rem',
-                  '&:hover': { bgcolor: 'transparent', color: '#1B5E20' },
-                }}
-              >
-                Community
-              </Button>
+              {(['Dashboard', 'Impact', 'Community'] as const).map((tab) => {
+                const to = tab === 'Dashboard' ? '/dashboard' : tab === 'Impact' ? '/gamification/challenges' : '/leaderboard';
+                const active = activeTab === tab;
+                return (
+                  <Button
+                    key={tab}
+                    component={Link}
+                    to={to}
+                    sx={{
+                      color: active ? 'primary.main' : 'text.secondary',
+                      fontWeight: active ? 800 : 600,
+                      borderBottom: active ? '2px solid' : '2px solid transparent',
+                      borderColor: active ? 'primary.main' : 'transparent',
+                      borderRadius: 0,
+                      px: 1,
+                      py: 0.5,
+                      minWidth: 0,
+                      textTransform: 'none',
+                      fontSize: '0.95rem',
+                      '&:hover': { bgcolor: 'transparent', color: 'primary.main' },
+                    }}
+                  >
+                    {tab}
+                  </Button>
+                );
+              })}
             </Box>
           )}
 
-          {/* Top Bar Middle Search Bar (Conditional for admin) */}
+          {/* Admin search */}
           {isGamifyAdminPortal && !isMobile && (
             <TextField
               size="small"
@@ -559,19 +486,12 @@ export default function MainLayout() {
                   </InputAdornment>
                 ),
               }}
-              sx={{
-                width: 320,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '6px',
-                  bgcolor: 'rgba(0,0,0,0.02)',
-                  '& fieldset': { borderColor: 'rgba(0,0,0,0.06)' },
-                },
-              }}
+              sx={{ width: 280 }}
             />
           )}
 
-          {/* Top Bar Actions on the Right */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          {/* Right actions */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <Tooltip title="Notifications">
               <IconButton size="small" aria-label="notifications">
                 <MuiBadge badgeContent={3} color="error">
@@ -580,43 +500,55 @@ export default function MainLayout() {
               </IconButton>
             </Tooltip>
 
-            {/* Gear Settings icon shown only in ESG Gamify Portal for admins */}
             {isGamifyAdminPortal && (
               <Tooltip title="Settings">
-                <IconButton onClick={() => navigate('/settings')} size="small">
+                <IconButton onClick={() => navigate('/settings')} size="small" aria-label="settings">
                   <SettingsIcon sx={{ fontSize: 22 }} />
                 </IconButton>
               </Tooltip>
             )}
 
             <Tooltip title="Help">
-              <IconButton size="small">
+              <IconButton size="small" aria-label="help">
                 <HelpOutlineIcon sx={{ fontSize: 22 }} />
               </IconButton>
             </Tooltip>
 
-            {/* Employee Level Indicator */}
+            {/* Theme toggle */}
+            <Tooltip title={effectiveMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+              <IconButton
+                size="small"
+                onClick={toggleMode}
+                aria-label={effectiveMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {effectiveMode === 'dark'
+                  ? <Brightness7Icon sx={{ fontSize: 22 }} />
+                  : <Brightness4Icon sx={{ fontSize: 22 }} />}
+              </IconButton>
+            </Tooltip>
+
+            {/* Employee level indicator */}
             {isEmployee && !isMobile && (
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', mr: 0.5 }}>
-                <Typography variant="body2" fontWeight={850} sx={{ color: '#1b4d3e', lineHeight: 1.1 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', mx: 0.5 }}>
+                <Typography variant="body2" fontWeight={850} color="text.primary" lineHeight={1.1}>
                   {user?.name || 'Alex Green'}
                 </Typography>
-                <Typography variant="caption" fontWeight={850} sx={{ color: '#2E7D32', fontSize: '0.68rem', letterSpacing: '0.04em' }}>
+                <Typography variant="caption" fontWeight={850} color="primary.main" sx={{ fontSize: '0.68rem', letterSpacing: '0.04em' }}>
                   LVL {level} {userTitle}
                 </Typography>
               </Box>
             )}
 
             <Tooltip title={user?.name ?? 'Account'}>
-              <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small" sx={{ ml: 0.5 }}>
-                <Avatar sx={{ bgcolor: '#2E7D32', width: 34, height: 34, fontSize: '0.8rem', fontWeight: 700 }}>
+              <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small" sx={{ ml: 0.5 }} aria-label="account menu">
+                <Avatar sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', width: 34, height: 34, fontSize: '0.8rem', fontWeight: 700 }}>
                   {userInitials}
                 </Avatar>
               </IconButton>
             </Tooltip>
           </Box>
 
-          {/* User Profile dropdown menu */}
+          {/* User profile dropdown */}
           <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
             <Box sx={{ px: 2, py: 1 }}>
               <Typography variant="subtitle2" fontWeight={700}>{user?.name}</Typography>
@@ -640,7 +572,7 @@ export default function MainLayout() {
         </Toolbar>
       </AppBar>
 
-      {/* Mobile Sidebar drawer */}
+      {/* Mobile drawer */}
       <Drawer
         variant="temporary"
         open={isMobile && mobileOpen}
@@ -654,7 +586,7 @@ export default function MainLayout() {
         {drawerContent}
       </Drawer>
 
-      {/* Desktop Sidebar drawer */}
+      {/* Desktop drawer */}
       <Drawer
         variant="permanent"
         sx={{
@@ -668,7 +600,7 @@ export default function MainLayout() {
         {drawerContent}
       </Drawer>
 
-      {/* Main Page Area Content wrapper */}
+      {/* Main content area */}
       <Box
         component="main"
         sx={{

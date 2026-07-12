@@ -9,17 +9,13 @@ import {
   Button,
   CircularProgress,
   LinearProgress,
-  IconButton,
   Tooltip,
-  Alert,
-  Checkbox,
-  FormControlLabel,
+  Chip,
 } from '@mui/material';
 import EcoIcon from '@mui/icons-material/EnergySavingsLeaf';
 import GroupsIcon from '@mui/icons-material/Groups';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import StarIcon from '@mui/icons-material/Star';
-import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -27,7 +23,7 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import { useNavigate } from 'react-router-dom';
 
 import Breadcrumb from '@/components/Breadcrumb';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,6 +31,7 @@ import api from '@/services/api';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isEmployee = user?.role === 'Employee';
 
   // ── Admin States ────────────────────────────────────────────────────────────
