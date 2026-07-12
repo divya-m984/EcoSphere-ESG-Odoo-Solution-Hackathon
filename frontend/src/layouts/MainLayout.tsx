@@ -19,7 +19,10 @@ import {
   Tooltip,
   useMediaQuery,
   useTheme,
-  Badge,
+  Badge as MuiBadge,
+  Button,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -28,119 +31,18 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import AssessmentIcon from '@mui/icons-material/Assessment';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import PersonIcon from '@mui/icons-material/Person';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import SearchIcon from '@mui/icons-material/Search';
+import AddIcon from '@mui/icons-material/Add';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import { useAuth } from '@/hooks/useAuth';
 import { useSidebar } from '@/hooks/useSidebar';
-import { APP_NAME, SIDEBAR_WIDTH, ROUTES } from '@/utils/constants';
-
-const MAIN_NAV = [
-  { path: ROUTES.DASHBOARD,     label: 'Dashboard',     icon: <DashboardIcon fontSize="small" /> },
-  { path: ROUTES.ENVIRONMENTAL, label: 'Environmental', icon: <EcoIcon fontSize="small" /> },
-  { path: ROUTES.SOCIAL,        label: 'Social',        icon: <GroupsIcon fontSize="small" /> },
-  { path: ROUTES.GOVERNANCE,    label: 'Governance',    icon: <AccountBalanceIcon fontSize="small" /> },
-  { path: ROUTES.GAMIFICATION,  label: 'Gamification',  icon: <EmojiEventsIcon fontSize="small" /> },
-  { path: ROUTES.REPORTS,       label: 'Reports',       icon: <AssessmentIcon fontSize="small" /> },
-];
-
-const BOTTOM_NAV = [
-  { path: ROUTES.ADMINISTRATION, label: 'Administration', icon: <AdminPanelSettingsIcon fontSize="small" /> },
-  { path: ROUTES.PROFILE,        label: 'Profile',        icon: <PersonIcon fontSize="small" /> },
-  { path: ROUTES.SETTINGS,       label: 'Settings',       icon: <SettingsIcon fontSize="small" /> },
-];
-
-function NavList({ onClose }: { onClose?: () => void }) {
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
-
-  const handleNav = (path: string) => {
-    navigate(path);
-    onClose?.();
-  };
-
-  const itemSx = {
-    borderRadius: 2,
-    mb: 0.5,
-    '&.Mui-selected': {
-      bgcolor: 'primary.main',
-      color: 'primary.contrastText',
-      '& .MuiListItemIcon-root': { color: 'primary.contrastText' },
-      '&:hover': { bgcolor: 'primary.dark' },
-    },
-  };
-
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Logo */}
-      <Box sx={{ px: 2.5, py: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Box
-          sx={{
-            width: 36,
-            height: 36,
-            borderRadius: 2,
-            bgcolor: 'primary.main',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          <EcoIcon sx={{ color: 'white', fontSize: 20 }} />
-        </Box>
-        <Box>
-          <Typography variant="subtitle1" fontWeight={700} color="primary.main" lineHeight={1.1}>
-            {APP_NAME}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" lineHeight={1}>
-            ESG Platform
-          </Typography>
-        </Box>
-      </Box>
-      <Divider />
-
-      {/* Main nav */}
-      <List sx={{ px: 1.5, pt: 1.5, flex: 1 }}>
-        {MAIN_NAV.map((item) => {
-          const active = pathname === item.path;
-          return (
-            <ListItem key={item.path} disablePadding>
-              <ListItemButton selected={active} onClick={() => handleNav(item.path)} sx={itemSx}>
-                <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: active ? 600 : 400 }}
-                />
-              </ListItemButton>
-            </ListItem>
-          );
-        })}
-      </List>
-
-      <Divider />
-
-      {/* Bottom nav */}
-      <List sx={{ px: 1.5, py: 1 }}>
-        {BOTTOM_NAV.map((item) => {
-          const active = pathname === item.path;
-          return (
-            <ListItem key={item.path} disablePadding>
-              <ListItemButton selected={active} onClick={() => handleNav(item.path)} sx={itemSx}>
-                <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: active ? 600 : 400 }}
-                />
-              </ListItemButton>
-            </ListItem>
-          );
-        })}
-      </List>
-    </Box>
-  );
-}
+import { SIDEBAR_WIDTH } from '@/utils/constants';
 
 export default function MainLayout() {
   const muiTheme = useTheme();
@@ -149,69 +51,306 @@ export default function MainLayout() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  // Determine active console context:
+  // We use ESG Gamify mode for list views of Challenges, Tasks, Badges, Teams
+  const isGamifyAdminPortal =
+    pathname.startsWith('/gamification/') &&
+    !pathname.includes('/new') &&
+    !/^\/gamification\/tasks\/\d+/.test(pathname) &&
+    !/^\/gamification\/challenges\/\d+/.test(pathname);
+
+  // Determine top bar title text
+  let headerTitle = 'ESG Control';
+  if (pathname.includes('/challenges/new') || /^\/gamification\/challenges\/\d+/.test(pathname)) {
+    headerTitle = 'ESG Auditor';
+  } else if (pathname.includes('/tasks/new') || /^\/gamification\/tasks\/\d+/.test(pathname)) {
+    headerTitle = 'ESG Control';
+  } else if (isGamifyAdminPortal) {
+    headerTitle = 'ESG Admin Console';
+  }
 
   const handleLogout = () => {
     setAnchorEl(null);
     logout();
-    navigate(ROUTES.LOGIN);
+    navigate('/login');
   };
 
   const userInitials = user?.name
     ? user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
-    : '?';
+    : 'A';
 
-  const drawerContent = <NavList onClose={isMobile ? closeDrawer : undefined} />;
+  // Navigation handlers
+  const handleNav = (path: string) => {
+    navigate(path);
+    if (isMobile) closeDrawer();
+  };
+
+  // Nav list styling
+  const itemSx = {
+    borderRadius: '8px',
+    mb: 0.5,
+    '&.Mui-selected': {
+      bgcolor: '#2E7D32',
+      color: '#FFFFFF',
+      '& .MuiListItemIcon-root': { color: '#FFFFFF' },
+      '&:hover': { bgcolor: '#1B5E20' },
+    },
+  };
+
+  // 1. ESG Control Menu Configuration
+  const controlNavItems = [
+    { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon fontSize="small" /> },
+    { path: '/environmental', label: 'Environment', icon: <EcoIcon fontSize="small" /> },
+    { path: '/social', label: 'Social', icon: <GroupsIcon fontSize="small" /> },
+    { path: '/governance', label: 'Governance', icon: <AccountBalanceIcon fontSize="small" /> },
+    { path: '/gamification', label: 'Gamification', icon: <EmojiEventsIcon fontSize="small" /> },
+    { path: '/reports', label: 'Reports', icon: <AssessmentIcon fontSize="small" /> },
+    { path: '/settings', label: 'Settings', icon: <SettingsIcon fontSize="small" /> },
+  ];
+
+  // 2. ESG Gamify Menu Configuration
+  const gamifyNavItems = [
+    { path: '/gamification', label: 'Dashboard', icon: <DashboardIcon fontSize="small" /> },
+    { path: '/gamification/challenges', label: 'Challenges', icon: <EmojiEventsIcon fontSize="small" /> },
+    { path: '/gamification/tasks', label: 'Tasks', icon: <AssignmentIcon fontSize="small" /> },
+    { path: '/gamification/badges', label: 'Badges', icon: <MilitaryTechIcon fontSize="small" /> },
+    { path: '/gamification/teams', label: 'Teams', icon: <GroupsIcon fontSize="small" /> },
+    { path: '/reports', label: 'Reports', icon: <AssessmentIcon fontSize="small" /> },
+  ];
+
+  const drawerContent = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Sidebar Header branding */}
+      <Box sx={{ px: 2.5, py: 2.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        {isGamifyAdminPortal ? (
+          <>
+            <Box
+              sx={{
+                width: 38,
+                height: 38,
+                borderRadius: '8px',
+                bgcolor: '#2E7D32',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <EmojiEventsIcon sx={{ color: 'white', fontSize: 20 }} />
+            </Box>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={700} color="#2E7D32" lineHeight={1.1}>
+                ESG Gamify
+              </Typography>
+              <Typography variant="caption" color="text.secondary" fontWeight={600} lineHeight={1}>
+                Admin Portal
+              </Typography>
+            </Box>
+          </>
+        ) : (
+          <>
+            <Box
+              sx={{
+                width: 38,
+                height: 38,
+                borderRadius: '8px',
+                bgcolor: '#2E7D32',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <EcoIcon sx={{ color: 'white', fontSize: 20 }} />
+            </Box>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={700} color="text.primary" lineHeight={1.1}>
+                ESG Control
+              </Typography>
+              <Typography variant="caption" color="text.secondary" fontWeight={600} lineHeight={1}>
+                Sustainability Audit
+              </Typography>
+            </Box>
+          </>
+        )}
+      </Box>
+      <Divider sx={{ mb: 1 }} />
+
+      {/* Navigation Links list */}
+      <List sx={{ px: 1.5, flexGrow: 1 }}>
+        {isGamifyAdminPortal ? (
+          gamifyNavItems.map((item) => {
+            // Match active path exactly or sub-routes
+            const active = pathname === item.path || (item.path !== '/gamification' && pathname.startsWith(item.path));
+            return (
+              <ListItem key={item.path} disablePadding>
+                <ListItemButton selected={active} onClick={() => handleNav(item.path)} sx={itemSx}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
+                  <ListItemText
+                    primary={item.label}
+                    primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: active ? 700 : 500 }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            );
+          })
+        ) : (
+          controlNavItems.map((item) => {
+            const active = pathname === item.path || (item.path === '/gamification' && pathname.startsWith('/gamification'));
+            return (
+              <ListItem key={item.path} disablePadding>
+                <ListItemButton selected={active} onClick={() => handleNav(item.path)} sx={itemSx}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
+                  <ListItemText
+                    primary={item.label}
+                    primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: active ? 700 : 500 }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            );
+          })
+        )}
+      </List>
+
+      {/* Settings & Logout for ESG Gamify mode bottom */}
+      {isGamifyAdminPortal && (
+        <Box sx={{ px: 1.5, pb: 2 }}>
+          <ListItem disablePadding>
+            <ListItemButton onClick={() => handleNav('/settings')} sx={itemSx}>
+              <ListItemIcon sx={{ minWidth: 36 }}><SettingsIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Settings" primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: 500 }} />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton onClick={handleLogout} sx={{ ...itemSx, color: 'error.main', '& .MuiListItemIcon-root': { color: 'error.main' } }}>
+              <ListItemIcon sx={{ minWidth: 36 }}><LogoutIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Log Out" primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: 500 }} />
+            </ListItemButton>
+          </ListItem>
+        </Box>
+      )}
+
+      {/* New Report green button for ESG Control bottom */}
+      {!isGamifyAdminPortal && (
+        <Box sx={{ p: 2 }}>
+          <Button
+            fullWidth
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/reports')}
+            sx={{
+              borderRadius: '8px',
+              py: 1,
+              fontSize: '0.85rem',
+              bgcolor: '#1b4d3e',
+              '&:hover': { bgcolor: '#113027' },
+            }}
+          >
+            New Report
+          </Button>
+        </Box>
+      )}
+    </Box>
+  );
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      {/* AppBar */}
+      {/* Top Navbar */}
       <AppBar
         position="fixed"
         color="inherit"
+        elevation={0}
         sx={{
           zIndex: (t) => t.zIndex.drawer + 1,
           width: { md: `calc(100% - ${SIDEBAR_WIDTH}px)` },
           ml:    { md: `${SIDEBAR_WIDTH}px` },
+          borderBottom: '1px solid rgba(0,0,0,0.06)',
         }}
       >
-        <Toolbar>
-          {isMobile && (
-            <IconButton edge="start" onClick={openDrawer} sx={{ mr: 1 }} aria-label="open menu">
-              <MenuIcon />
-            </IconButton>
+        <Toolbar sx={{ justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {isMobile && (
+              <IconButton edge="start" onClick={openDrawer} sx={{ mr: 1 }} aria-label="open menu">
+                <MenuIcon />
+              </IconButton>
+            )}
+            <Typography variant="h6" fontWeight={700} color="#1b4d3e" sx={{ fontSize: '1.25rem' }}>
+              {headerTitle}
+            </Typography>
+          </Box>
+
+          {/* Top Bar Middle Search Bar (Conditional) */}
+          {isGamifyAdminPortal && !isMobile && (
+            <TextField
+              size="small"
+              placeholder="Search..."
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                width: 320,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '6px',
+                  bgcolor: 'rgba(0,0,0,0.02)',
+                  '& fieldset': { borderColor: 'rgba(0,0,0,0.06)' },
+                },
+              }}
+            />
           )}
 
-          <Typography variant="h6" fontWeight={600} color="text.primary" sx={{ flexGrow: 1 }}>
-            ESG Management Platform
-          </Typography>
+          {/* Top Bar Actions on the Right */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Tooltip title="Notifications">
+              <IconButton size="small" aria-label="notifications">
+                <MuiBadge badgeContent={3} color="error">
+                  <NotificationsIcon sx={{ fontSize: 22 }} />
+                </MuiBadge>
+              </IconButton>
+            </Tooltip>
 
-          <Tooltip title="Notifications">
-            <IconButton sx={{ mr: 0.5 }} aria-label="notifications">
-              <Badge badgeContent={0} color="error">
-                <NotificationsIcon />
-              </Badge>
-            </IconButton>
-          </Tooltip>
+            {/* Gear Settings icon shown only in ESG Gamify Portal */}
+            {isGamifyAdminPortal && (
+              <Tooltip title="Settings">
+                <IconButton onClick={() => navigate('/settings')} size="small">
+                  <SettingsIcon sx={{ fontSize: 22 }} />
+                </IconButton>
+              </Tooltip>
+            )}
 
-          <Tooltip title={user?.name ?? 'Account'}>
-            <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small" aria-label="user menu">
-              <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36, fontSize: '0.85rem' }}>
-                {userInitials}
-              </Avatar>
-            </IconButton>
-          </Tooltip>
+            <Tooltip title="Help">
+              <IconButton size="small">
+                <HelpOutlineIcon sx={{ fontSize: 22 }} />
+              </IconButton>
+            </Tooltip>
 
+            <Tooltip title={user?.name ?? 'Account'}>
+              <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small" sx={{ ml: 0.5 }}>
+                <Avatar sx={{ bgcolor: '#2E7D32', width: 34, height: 34, fontSize: '0.8rem', fontWeight: 700 }}>
+                  {userInitials}
+                </Avatar>
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          {/* User Profile dropdown menu */}
           <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
             <Box sx={{ px: 2, py: 1 }}>
-              <Typography variant="subtitle2" fontWeight={600}>{user?.name}</Typography>
+              <Typography variant="subtitle2" fontWeight={700}>{user?.name}</Typography>
               <Typography variant="caption" color="text.secondary">{user?.email}</Typography>
             </Box>
             <Divider />
-            <MenuItem onClick={() => { setAnchorEl(null); navigate(ROUTES.PROFILE); }}>
+            <MenuItem onClick={() => { setAnchorEl(null); navigate('/profile'); }}>
               <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
               Profile
             </MenuItem>
-            <MenuItem onClick={() => { setAnchorEl(null); navigate(ROUTES.SETTINGS); }}>
+            <MenuItem onClick={() => { setAnchorEl(null); navigate('/settings'); }}>
               <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
               Settings
             </MenuItem>
@@ -224,7 +363,7 @@ export default function MainLayout() {
         </Toolbar>
       </AppBar>
 
-      {/* Mobile drawer */}
+      {/* Mobile Sidebar drawer */}
       <Drawer
         variant="temporary"
         open={isMobile && mobileOpen}
@@ -238,7 +377,7 @@ export default function MainLayout() {
         {drawerContent}
       </Drawer>
 
-      {/* Desktop permanent drawer */}
+      {/* Desktop Sidebar drawer */}
       <Drawer
         variant="permanent"
         sx={{
@@ -252,7 +391,7 @@ export default function MainLayout() {
         {drawerContent}
       </Drawer>
 
-      {/* Page content */}
+      {/* Main Page Area Content wrapper */}
       <Box
         component="main"
         sx={{
@@ -265,24 +404,8 @@ export default function MainLayout() {
         }}
       >
         <Toolbar />
-        <Box sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
+        <Box sx={{ flex: 1, p: { xs: 2.5, sm: 4 } }}>
           <Outlet />
-        </Box>
-
-        <Box
-          component="footer"
-          sx={{
-            py: 1.5,
-            px: 3,
-            textAlign: 'center',
-            bgcolor: 'background.paper',
-            borderTop: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Typography variant="caption" color="text.secondary">
-            &copy; {new Date().getFullYear()} {APP_NAME} &middot; ESG Management Platform &middot; v0.1.0
-          </Typography>
         </Box>
       </Box>
     </Box>

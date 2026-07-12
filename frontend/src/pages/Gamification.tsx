@@ -5,8 +5,11 @@ import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import Breadcrumb from '@/components/Breadcrumb';
 import PlaceholderCard from '@/components/PlaceholderCard';
 import PlaceholderChart from '@/components/PlaceholderChart';
+import { useNavigate } from 'react-router-dom';
 
 export default function Gamification() {
+  const navigate = useNavigate();
+
   return (
     <Box>
       <Breadcrumb />
@@ -19,28 +22,31 @@ export default function Gamification() {
         <Grid item xs={12} sm={6} lg={4}>
           <PlaceholderCard
             title="Active Challenges"
-            value="—"
+            value="42"
             subtitle="Currently running challenges"
             color="primary.main"
             icon={<EmojiEventsIcon />}
+            onClick={() => navigate('/gamification/challenges')}
           />
         </Grid>
         <Grid item xs={12} sm={6} lg={4}>
           <PlaceholderCard
             title="Badges Awarded"
-            value="—"
+            value="28"
             subtitle="Total badges unlocked org-wide"
             color="warning.main"
             icon={<StarBorderIcon />}
+            onClick={() => navigate('/gamification/badges')}
           />
         </Grid>
         <Grid item xs={12} sm={6} lg={4}>
           <PlaceholderCard
             title="Rewards Redeemed"
-            value="—"
+            value="15"
             subtitle="Total reward redemptions"
             color="secondary.main"
             icon={<CardGiftcardIcon />}
+            onClick={() => navigate('/gamification/teams')}
           />
         </Grid>
 

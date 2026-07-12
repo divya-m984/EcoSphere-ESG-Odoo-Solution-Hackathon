@@ -9,6 +9,12 @@ import Environmental  from '@/pages/Environmental';
 import Social         from '@/pages/Social';
 import Governance     from '@/pages/Governance';
 import Gamification   from '@/pages/Gamification';
+import Challenges     from '@/pages/Challenges';
+import ChallengeForm  from '@/pages/ChallengeForm';
+import Tasks          from '@/pages/Tasks';
+import TaskForm       from '@/pages/TaskForm';
+import Badges         from '@/pages/Badges';
+import Teams          from '@/pages/Teams';
 import Reports        from '@/pages/Reports';
 import Administration from '@/pages/Administration';
 import Profile        from '@/pages/Profile';
@@ -33,6 +39,17 @@ export default function AppRoutes() {
             <Route path="/social"         element={<Social />} />
             <Route path="/governance"     element={<Governance />} />
             <Route path="/gamification"   element={<Gamification />} />
+            
+            {/* Gamification Sub-Routes */}
+            <Route path="/gamification/challenges"      element={<Challenges />} />
+            <Route path="/gamification/challenges/new"  element={<ChallengeForm />} />
+            <Route path="/gamification/challenges/:id"  element={<ChallengeForm />} />
+            <Route path="/gamification/tasks"           element={<Tasks />} />
+            <Route path="/gamification/tasks/new"       element={<TaskForm />} />
+            <Route path="/gamification/tasks/:id"       element={<TaskForm />} />
+            <Route path="/gamification/badges"          element={<Badges />} />
+            <Route path="/gamification/teams"           element={<Teams />} />
+
             <Route path="/reports"        element={<Reports />} />
             <Route path="/administration" element={<Administration />} />
             <Route path="/profile"        element={<Profile />} />
