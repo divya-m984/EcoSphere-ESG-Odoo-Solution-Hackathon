@@ -9,6 +9,7 @@ import Environmental  from '@/pages/Environmental';
 import Social         from '@/pages/Social';
 import Governance     from '@/pages/Governance';
 import Gamification   from '@/pages/Gamification';
+import Leaderboard    from '@/pages/Leaderboard';
 import Challenges     from '@/pages/Challenges';
 import ChallengeForm  from '@/pages/ChallengeForm';
 import Tasks          from '@/pages/Tasks';
@@ -39,6 +40,7 @@ export default function AppRoutes() {
             <Route path="/social"         element={<Social />} />
             <Route path="/governance"     element={<Governance />} />
             <Route path="/gamification"   element={<Gamification />} />
+            <Route path="/leaderboard"     element={<Leaderboard />} />
             
             {/* Gamification Sub-Routes */}
             <Route path="/gamification/challenges"      element={<Challenges />} />

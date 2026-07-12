@@ -40,6 +40,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
+import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import { useAuth } from '@/hooks/useAuth';
 import { useSidebar } from '@/hooks/useSidebar';
 import { SIDEBAR_WIDTH } from '@/utils/constants';
@@ -106,6 +107,7 @@ export default function MainLayout() {
     { path: '/social', label: 'Social', icon: <GroupsIcon fontSize="small" /> },
     { path: '/governance', label: 'Governance', icon: <AccountBalanceIcon fontSize="small" /> },
     { path: '/gamification', label: 'Gamification', icon: <EmojiEventsIcon fontSize="small" /> },
+    { path: '/leaderboard', label: 'Leaderboard', icon: <LeaderboardIcon fontSize="small" /> },
     { path: '/reports', label: 'Reports', icon: <AssessmentIcon fontSize="small" /> },
     { path: '/settings', label: 'Settings', icon: <SettingsIcon fontSize="small" /> },
   ];
@@ -117,6 +119,7 @@ export default function MainLayout() {
     { path: '/gamification/tasks', label: 'Tasks', icon: <AssignmentIcon fontSize="small" /> },
     { path: '/gamification/badges', label: 'Badges', icon: <MilitaryTechIcon fontSize="small" /> },
     { path: '/gamification/teams', label: 'Teams', icon: <GroupsIcon fontSize="small" /> },
+    { path: '/leaderboard', label: 'Leaderboard', icon: <LeaderboardIcon fontSize="small" /> },
     { path: '/reports', label: 'Reports', icon: <AssessmentIcon fontSize="small" /> },
   ];
 
