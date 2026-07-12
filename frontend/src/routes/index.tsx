@@ -16,6 +16,8 @@ import Tasks          from '@/pages/Tasks';
 import TaskForm       from '@/pages/TaskForm';
 import Badges         from '@/pages/Badges';
 import Teams          from '@/pages/Teams';
+import Rewards        from '@/pages/Rewards';
+import AdminRewards   from '@/pages/AdminRewards';
 import Reports        from '@/pages/Reports';
 import Administration from '@/pages/Administration';
 import Profile        from '@/pages/Profile';
@@ -51,6 +53,8 @@ export default function AppRoutes() {
             <Route path="/gamification/tasks/:id"       element={<TaskForm />} />
             <Route path="/gamification/badges"          element={<Badges />} />
             <Route path="/gamification/teams"           element={<Teams />} />
+            <Route path="/gamification/rewards"         element={<Rewards />} />
+            <Route path="/gamification/rewards/manage"  element={<AdminRewards />} />
 
             <Route path="/reports"        element={<Reports />} />
             <Route path="/administration" element={<Administration />} />

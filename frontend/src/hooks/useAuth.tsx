@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import api from '@/services/api';
 import type { User } from '@/types';
 import { STORAGE_KEYS } from '@/utils/constants';
 
@@ -7,6 +8,11 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+}
+
+interface LoginResponse {
+  token: string;
+  user: { id: string; email: string; name: string; role: string };
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,22 +33,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, _password: string) => {
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
-    // Simulate network latency — replace with real API call when backend is ready
-    await new Promise((r) => setTimeout(r, 600));
-    const mockUser: User = {
-      id: '1',
-      email,
-      name: email
-        .split('@')[0]
-        .replace(/[._-]/g, ' ')
-        .replace(/\b\w/g, (c) => c.toUpperCase()),
-      role: 'ESG_Manager',
-    };
-    setUser(mockUser);
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(mockUser));
-    setIsLoading(false);
+    try {
+      const { data } = await api.post<LoginResponse>('/auth/login', { email, password });
+      const fullUser: User & { token: string } = {
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.name,
+        role: data.user.role as User['role'],
+        token: data.token,
+      };
+      setUser(fullUser);
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(fullUser));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = () => {

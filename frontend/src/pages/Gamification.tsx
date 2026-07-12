@@ -46,7 +46,7 @@ export default function Gamification() {
             subtitle="Total reward redemptions"
             color="secondary.main"
             icon={<CardGiftcardIcon />}
-            onClick={() => navigate('/gamification/teams')}
+            onClick={() => navigate('/gamification/rewards')}
           />
         </Grid>
 

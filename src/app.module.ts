@@ -9,6 +9,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { BadgesModule } from './badges/badges.module';
 import { TasksModule } from './tasks/tasks.module';
+import { RewardsModule } from './rewards/rewards.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 @Module({
@@ -26,6 +27,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     ChallengesModule,
     BadgesModule,
     TasksModule,
+    RewardsModule,
   ],
 })
 export class AppModule implements NestModule {

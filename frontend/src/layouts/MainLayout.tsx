@@ -41,6 +41,7 @@ import AddIcon from '@mui/icons-material/Add';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import { useAuth } from '@/hooks/useAuth';
 import { useSidebar } from '@/hooks/useSidebar';
 import { SIDEBAR_WIDTH } from '@/utils/constants';
@@ -55,12 +56,12 @@ export default function MainLayout() {
   const { pathname } = useLocation();
 
   // Determine active console context:
-  // We use ESG Gamify mode for list views of Challenges, Tasks, Badges, Teams
+  // We use ESG Gamify mode for list views of Challenges, Tasks, Badges, Teams, Rewards
   const isGamifyAdminPortal =
     pathname.startsWith('/gamification/') &&
     !pathname.includes('/new') &&
-    !/^\/gamification\/tasks\/\d+/.test(pathname) &&
-    !/^\/gamification\/challenges\/\d+/.test(pathname);
+    !/^\/gamification\/tasks\/[^/]+$/.test(pathname) &&
+    !/^\/gamification\/challenges\/[^/]+$/.test(pathname);
 
   // Determine top bar title text
   let headerTitle = 'ESG Control';
@@ -120,6 +121,7 @@ export default function MainLayout() {
     { path: '/gamification/badges', label: 'Badges', icon: <MilitaryTechIcon fontSize="small" /> },
     { path: '/gamification/teams', label: 'Teams', icon: <GroupsIcon fontSize="small" /> },
     { path: '/leaderboard', label: 'Leaderboard', icon: <LeaderboardIcon fontSize="small" /> },
+    { path: '/gamification/rewards', label: 'Rewards', icon: <CardGiftcardIcon fontSize="small" /> },
     { path: '/reports', label: 'Reports', icon: <AssessmentIcon fontSize="small" /> },
   ];
 

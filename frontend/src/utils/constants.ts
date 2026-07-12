@@ -10,6 +10,8 @@ export const ROUTES = {
   GOVERNANCE:     '/governance',
   GAMIFICATION:   '/gamification',
   LEADERBOARD:    '/leaderboard',
+  REWARDS:        '/gamification/rewards',
+  ADMIN_REWARDS:  '/gamification/rewards/manage',
   REPORTS:        '/reports',
   ADMINISTRATION: '/administration',
   PROFILE:        '/profile',
