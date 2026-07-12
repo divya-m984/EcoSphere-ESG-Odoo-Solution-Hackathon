@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import api from '../services/api';
 import {
   Box,
   Typography,
@@ -9,6 +10,7 @@ import {
   Button,
   Avatar,
   Chip,
+  CircularProgress,
 } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import AddIcon from '@mui/icons-material/Add';
@@ -53,7 +55,33 @@ const INITIAL_TEAMS: Team[] = [
 
 export default function Teams() {
   const navigate = useNavigate();
-  const [teams] = useState<Team[]>(INITIAL_TEAMS);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/departments/teams')
+      .then((res) => {
+        if (res.data && res.data.length > 0) {
+          setTeams(res.data);
+        } else {
+          setTeams(INITIAL_TEAMS);
+        }
+      })
+      .catch(() => {
+        setTeams(INITIAL_TEAMS);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 1 }}>

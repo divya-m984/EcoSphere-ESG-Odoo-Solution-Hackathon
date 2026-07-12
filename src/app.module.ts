@@ -6,6 +6,9 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { ChallengesModule } from './challenges/challenges.module';
+import { BadgesModule } from './badges/badges.module';
+import { TasksModule } from './tasks/tasks.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 @Module({
@@ -20,6 +23,9 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     UsersModule,
     DepartmentsModule,
     DashboardModule,
+    ChallengesModule,
+    BadgesModule,
+    TasksModule,
   ],
 })
 export class AppModule implements NestModule {

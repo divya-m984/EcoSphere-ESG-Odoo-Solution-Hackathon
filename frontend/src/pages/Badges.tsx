@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import api from '../services/api';
 import {
   Box,
   Typography,
@@ -21,6 +22,7 @@ import {
   Radio,
   Chip,
   Avatar,
+  CircularProgress,
 } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CloseIcon from '@mui/icons-material/Close';
@@ -76,7 +78,8 @@ const INITIAL_BADGES: Badge[] = [
 
 export default function Badges() {
   const navigate = useNavigate();
-  const [badges, setBadges] = useState<Badge[]>(INITIAL_BADGES);
+  const [badges, setBadges] = useState<Badge[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // States for Badge Modal
   const [openBadgeModal, setOpenBadgeModal] = useState(false);
@@ -91,28 +94,94 @@ export default function Badges() {
   const [newBadgeEnd, setNewBadgeEnd] = useState('2024-06-30');
   const [newBadgeScope, setNewBadgeScope] = useState<'Solo' | 'Team'>('Solo');
 
+  const fetchBadges = () => {
+    api.get('/badges')
+      .then((res) => {
+        if (res.data && res.data.length > 0) {
+          const mapped = res.data.map((item: any) => {
+            const rule = item.unlockRule || {};
+            return {
+              id: item.id,
+              name: item.name,
+              description: item.description,
+              family: rule.family || 'General',
+              tier: rule.tier || 1,
+              source: rule.criteria || 'Manual XP',
+              scope: rule.scope || 'Solo',
+              timeLimited: rule.timeLimited || false,
+              xpRequired: rule.xpThreshold || undefined,
+            };
+          });
+          setBadges(mapped);
+        } else {
+          setBadges(INITIAL_BADGES);
+        }
+      })
+      .catch(() => {
+        setBadges(INITIAL_BADGES);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchBadges();
+  }, []);
+
   const handleSaveBadge = () => {
     if (newBadgeName) {
-      setBadges((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          name: newBadgeName,
-          description: newBadgeDesc || 'No description provided.',
+      const payload = {
+        name: newBadgeName,
+        description: newBadgeDesc || 'No description provided.',
+        icon: 'trophy',
+        unlockRule: {
           family: newBadgeFamily,
           tier: Number(newBadgeTier),
-          source: newBadgeUnlock.replace('_', ' '),
+          criteria: newBadgeUnlock.replace('_', ' '),
           scope: newBadgeScope,
           timeLimited: newBadgeTimeLimited,
-          xpRequired: newBadgeUnlock === 'Manual_XP' ? Number(newBadgeXP) : undefined,
+          xpThreshold: newBadgeUnlock === 'Manual_XP' ? Number(newBadgeXP) : undefined,
         },
-      ]);
-      setOpenBadgeModal(false);
-      // Reset badge modal states
-      setNewBadgeName('');
-      setNewBadgeDesc('');
+      };
+
+      api.post('/badges', payload)
+        .then(() => {
+          fetchBadges();
+        })
+        .catch((err) => {
+          console.error('Failed to create badge via API', err);
+          // Local fallback
+          setBadges((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              name: newBadgeName,
+              description: newBadgeDesc || 'No description provided.',
+              family: newBadgeFamily,
+              tier: Number(newBadgeTier),
+              source: newBadgeUnlock.replace('_', ' '),
+              scope: newBadgeScope,
+              timeLimited: newBadgeTimeLimited,
+              xpRequired: newBadgeUnlock === 'Manual_XP' ? Number(newBadgeXP) : undefined,
+            },
+          ]);
+        })
+        .finally(() => {
+          setOpenBadgeModal(false);
+          setNewBadgeName('');
+          setNewBadgeDesc('');
+        });
     }
   };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 1 }}>

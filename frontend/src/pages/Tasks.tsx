@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import api from '../services/api';
 import {
   Box,
   Typography,
@@ -23,6 +24,7 @@ import {
   MenuItem,
   TextField,
   InputAdornment,
+  CircularProgress,
 } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -89,10 +91,39 @@ const INITIAL_TASKS: TaskItem[] = [
 
 export default function Tasks() {
   const navigate = useNavigate();
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
   const [selectedModes, setSelectedModes] = useState<string[]>([]);
   const [selectedCadences, setSelectedCadences] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    api.get('/tasks')
+      .then((res) => {
+        if (res.data && res.data.length > 0) {
+          const mapped = res.data.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            subtitle: item.description || 'Eco-friendly action',
+            xpPerCompletion: item.xpPerCompletion,
+            cadence: item.cadence || 'Daily',
+            participation: item.participation || 'Solo',
+            milestones: item.milestones || '1 tier',
+            status: item.status || 'Active',
+          }));
+          setTasks(mapped);
+        } else {
+          setTasks(INITIAL_TASKS);
+        }
+      })
+      .catch(() => {
+        setTasks(INITIAL_TASKS);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
 
   // Table action menu states
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -167,6 +198,23 @@ export default function Tasks() {
         return { bgcolor: 'rgba(0, 0, 0, 0.06)', color: 'text.secondary' };
     }
   };
+
+  const filteredTasks = tasks.filter((t) => {
+    const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          t.subtitle.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = selectedStatus.length === 0 || selectedStatus.includes(t.status);
+    const matchesMode = selectedModes.length === 0 || selectedModes.includes(t.participation);
+    const matchesCadence = selectedCadences.length === 0 || selectedCadences.includes(t.cadence);
+    return matchesSearch && matchesStatus && matchesMode && matchesCadence;
+  });
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 1 }}>
@@ -279,7 +327,7 @@ export default function Tasks() {
           <Card sx={{ borderRadius: '12px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: 'none', overflow: 'hidden' }}>
             <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
               <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                Showing 1-4 of 24 tasks
+                Showing 1-{filteredTasks.length} of {filteredTasks.length} tasks
               </Typography>
               <TextField
                 size="small"
@@ -311,7 +359,7 @@ export default function Tasks() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {INITIAL_TASKS.map((row) => (
+                  {filteredTasks.map((row) => (
                     <TableRow
                       key={row.id}
                       hover

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import api from '../services/api';
 import {
   Box,
   Typography,
@@ -21,6 +22,7 @@ import {
   MenuItem,
   TextField,
   InputAdornment,
+  CircularProgress,
 } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -88,11 +90,39 @@ const INITIAL_CHALLENGES: ChallengeItem[] = [
 
 export default function Challenges() {
   const navigate = useNavigate();
+  const [challenges, setChallenges] = useState<ChallengeItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<string[]>(['Active']);
   const [selectedModes, setSelectedModes] = useState<string[]>(['Solo', 'Team']);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['Environment']);
   const [rowsPerPage, setRowsPerPage] = useState(15);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    api.get('/challenges')
+      .then((res) => {
+        if (res.data && res.data.length > 0) {
+          const mapped = res.data.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            category: item.category?.name || 'Environment',
+            xpReward: item.xpReward,
+            startDate: new Date(item.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }),
+            endDate: new Date(item.deadline).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }),
+            mode: item.evidenceRequired ? 'Solo' : 'Team',
+          }));
+          setChallenges(mapped);
+        } else {
+          setChallenges(INITIAL_CHALLENGES);
+        }
+      })
+      .catch(() => {
+        setChallenges(INITIAL_CHALLENGES);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
 
   const handleStatusChange = (status: string) => {
     setSelectedStatus((prev) =>
@@ -117,6 +147,21 @@ export default function Challenges() {
     setSelectedModes([]);
     setSelectedCategories([]);
   };
+
+  const filteredChallenges = challenges.filter((c) => {
+    const matchesSearch = c.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(c.category);
+    const matchesMode = selectedModes.length === 0 || selectedModes.includes(c.mode);
+    return matchesSearch && matchesCategory && matchesMode;
+  });
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 1 }}>
@@ -229,7 +274,7 @@ export default function Challenges() {
           <Card sx={{ borderRadius: '12px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: 'none', overflow: 'hidden' }}>
             <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
               <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                Showing 1-{INITIAL_CHALLENGES.length} of 42 Challenges
+                Showing 1-{filteredChallenges.length} of {filteredChallenges.length} Challenges
               </Typography>
               <TextField
                 size="small"
@@ -262,7 +307,7 @@ export default function Challenges() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {INITIAL_CHALLENGES.map((row) => (
+                  {filteredChallenges.map((row) => (
                     <TableRow
                       key={row.id}
                       hover

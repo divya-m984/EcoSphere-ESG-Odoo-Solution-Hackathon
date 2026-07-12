@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import api from '../services/api';
 import {
   Box,
   Typography,
@@ -49,7 +50,7 @@ export default function ChallengeForm() {
 
   // States for Challenge Form
   const [status, setStatus] = useState<'Draft' | 'Active' | 'Under_Review' | 'Completed'>('Draft');
-  const [title, setTitle] = useState(isEdit ? 'Zero Waste Week 2024' : '');
+  const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Environmental');
   const [description, setDescription] = useState('');
   const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
@@ -77,9 +78,53 @@ export default function ChallengeForm() {
   const [newBadgeEnd, setNewBadgeEnd] = useState('2024-06-30');
   const [newBadgeScope, setNewBadgeScope] = useState<'Solo' | 'Team'>('Solo');
 
+  useEffect(() => {
+    if (isEdit && id) {
+      api.get(`/challenges/${id}`)
+        .then((res) => {
+          if (res.data) {
+            setTitle(res.data.title || '');
+            setCategory(res.data.category?.name || 'Environmental');
+            setDescription(res.data.description || '');
+            setDifficulty(res.data.difficulty || 'Medium');
+            setXpReward(String(res.data.xpReward || 500));
+            setEvidenceRequired(res.data.evidenceRequired ?? true);
+            if (res.data.deadline) {
+              setEndDate(new Date(res.data.deadline).toISOString().split('T')[0]);
+            }
+            setStatus(res.data.status || 'Draft');
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load challenge details', err);
+        });
+    }
+  }, [isEdit, id]);
+
   const handleSave = () => {
-    // Save challenge action logic here
-    navigate('/gamification/challenges');
+    const payload = {
+      title,
+      category,
+      description,
+      xpReward: parseInt(xpReward) || 0,
+      difficulty,
+      evidenceRequired,
+      deadline: endDate || new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+      status,
+    };
+
+    const request = isEdit
+      ? api.put(`/challenges/${id}`, payload)
+      : api.post('/challenges', payload);
+
+    request
+      .then(() => {
+        navigate('/gamification/challenges');
+      })
+      .catch((err) => {
+        console.error('Failed to save challenge', err);
+        navigate('/gamification/challenges');
+      });
   };
 
   const handleDeleteBadge = (badgeId: string) => {
@@ -88,22 +133,45 @@ export default function ChallengeForm() {
 
   const handleSaveBadge = () => {
     if (newBadgeName) {
-      setBadges((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          name: newBadgeName,
-          criteria: newBadgeUnlock === 'Manual_XP'
-            ? `Reach ${newBadgeXP} XP`
-            : newBadgeUnlock === 'Linked_Challenge'
-            ? 'Complete challenge'
-            : 'Complete task milestones',
+      const criteriaText = newBadgeUnlock === 'Manual_XP'
+        ? `Reach ${newBadgeXP} XP`
+        : newBadgeUnlock === 'Linked_Challenge'
+        ? 'Complete challenge'
+        : 'Complete task milestones';
+
+      api.post('/badges', {
+        name: newBadgeName,
+        description: newBadgeDesc || criteriaText,
+        icon: 'trophy',
+        unlockRule: {
+          criteria: criteriaText,
+          xpThreshold: parseInt(newBadgeXP) || 0,
+          scope: newBadgeScope,
         },
-      ]);
-      setOpenBadgeModal(false);
-      // Reset badge modal states
-      setNewBadgeName('');
-      setNewBadgeDesc('');
+      }).then((res) => {
+        setBadges((prev) => [
+          ...prev,
+          {
+            id: res.data.id || Date.now().toString(),
+            name: newBadgeName,
+            criteria: criteriaText,
+          },
+        ]);
+      }).catch((err) => {
+        console.error('Failed to create badge via API, using local fallback', err);
+        setBadges((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            name: newBadgeName,
+            criteria: criteriaText,
+          },
+        ]);
+      }).finally(() => {
+        setOpenBadgeModal(false);
+        setNewBadgeName('');
+        setNewBadgeDesc('');
+      });
     }
   };
 

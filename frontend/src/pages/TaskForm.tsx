@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import api from '../services/api';
 import {
   Box,
   Typography,
@@ -44,16 +45,12 @@ export default function TaskForm() {
 
   // States for Task Form
   const [taskStatus, setTaskStatus] = useState<'Draft' | 'Active' | 'Inactive'>('Draft');
-  const [title, setTitle] = useState(isEdit ? 'Eco-Friendly Commute' : '');
+  const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Mobility');
   const [baseXP, setBaseXP] = useState('15');
   const [cadence, setCadence] = useState<'Daily' | 'Repeatable'>('Daily');
   const [participation, setParticipation] = useState<'Solo' | 'Team'>('Solo');
-  const [description, setDescription] = useState(
-    isEdit
-      ? 'Log your commute using public transit, cycling, or walking instead of a personal combustion engine vehicle.'
-      : ''
-  );
+  const [description, setDescription] = useState('');
 
   // Milestone Ladder State
   const [milestones, setMilestones] = useState<Milestone[]>([
@@ -76,8 +73,55 @@ export default function TaskForm() {
   const [newBadgeEnd, setNewBadgeEnd] = useState('2024-06-30');
   const [newBadgeScope, setNewBadgeScope] = useState<'Solo' | 'Team'>('Solo');
 
+  useEffect(() => {
+    if (isEdit && id) {
+      api.get(`/tasks/${id}`)
+        .then((res) => {
+          if (res.data) {
+            setTitle(res.data.title || '');
+            setDescription(res.data.description || '');
+            setCategory(res.data.categoryName || 'Mobility');
+            setBaseXP(String(res.data.xpPerCompletion || 15));
+            setCadence(res.data.cadence || 'Daily');
+            setParticipation(res.data.participation || 'Solo');
+            setTaskStatus(res.data.status || 'Draft');
+            if (res.data.milestones) {
+              // Parse milestones string back or keep defaults
+            }
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load task details', err);
+        });
+    }
+  }, [isEdit, id]);
+
   const handleSave = () => {
-    navigate('/gamification/tasks');
+    const milestoneSummary = milestones.map((m) => `${m.completions} completions -> ${m.badgeName || 'None'}`).join(', ');
+    const payload = {
+      title,
+      description,
+      xpPerCompletion: parseInt(baseXP) || 15,
+      evidenceRequired: false,
+      cadence,
+      participation,
+      milestones: milestoneSummary,
+      status: taskStatus,
+      category,
+    };
+
+    const request = isEdit
+      ? api.put(`/tasks/${id}`, payload)
+      : api.post('/tasks', payload);
+
+    request
+      .then(() => {
+        navigate('/gamification/tasks');
+      })
+      .catch((err) => {
+        console.error('Failed to save task', err);
+        navigate('/gamification/tasks');
+      });
   };
 
   const handleAddMilestone = () => {
