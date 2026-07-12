@@ -23,12 +23,24 @@ import {
   TextField,
   InputAdornment,
   CircularProgress,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Stack,
+  LinearProgress,
 } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import QueryBuilderIcon from '@mui/icons-material/QueryBuilder';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ChallengeItem {
   id: string;
@@ -38,6 +50,7 @@ interface ChallengeItem {
   startDate: string;
   endDate: string;
   mode: 'Solo' | 'Team';
+  description: string;
 }
 
 const INITIAL_CHALLENGES: ChallengeItem[] = [
@@ -49,6 +62,7 @@ const INITIAL_CHALLENGES: ChallengeItem[] = [
     startDate: '01 Oct',
     endDate: '07 Oct',
     mode: 'Solo',
+    description: 'Avoid single-use plastics and compost organic materials for a whole week.',
   },
   {
     id: '2',
@@ -58,6 +72,7 @@ const INITIAL_CHALLENGES: ChallengeItem[] = [
     startDate: '15 Oct',
     endDate: '15 Oct',
     mode: 'Team',
+    description: 'Participate with your team to clean local parks and organize recyclables.',
   },
   {
     id: '3',
@@ -67,6 +82,7 @@ const INITIAL_CHALLENGES: ChallengeItem[] = [
     startDate: '01 Sep',
     endDate: '30 Sep',
     mode: 'Solo',
+    description: 'Review and sign off the updated corporate governance and ethics policy.',
   },
   {
     id: '4',
@@ -76,6 +92,7 @@ const INITIAL_CHALLENGES: ChallengeItem[] = [
     startDate: '01 Aug',
     endDate: '31 Aug',
     mode: 'Solo',
+    description: 'Switch to digital invoice filing and use double-sided printing options.',
   },
   {
     id: '5',
@@ -85,18 +102,39 @@ const INITIAL_CHALLENGES: ChallengeItem[] = [
     startDate: '01 Jan',
     endDate: '31 Dec',
     mode: 'Team',
+    description: 'Audit department office spaces to optimize heating and light consumption.',
   },
 ];
 
 export default function Challenges() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isEmployee = user?.role === 'Employee';
+
   const [challenges, setChallenges] = useState<ChallengeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<string[]>(['Active']);
   const [selectedModes, setSelectedModes] = useState<string[]>(['Solo', 'Team']);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['Environment']);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['Environment', 'Social', 'Governance']);
   const [rowsPerPage, setRowsPerPage] = useState(15);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Proof submission dialog state
+  const [openProofDialog, setOpenProofDialog] = useState(false);
+  const [submittingProof, setSubmittingProof] = useState(false);
+  const [activeChallengeId, setActiveChallengeId] = useState<string | null>(null);
+  const [proofText, setProofText] = useState('');
+
+  // Local storage trackers for employee engagement
+  const [joinedChallenges, setJoinedChallenges] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem(`joined_challenges_${user?.id}`);
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [completedChallenges, setCompletedChallenges] = useState<Record<string, 'Active' | 'Review' | 'Completed'>>(() => {
+    const saved = localStorage.getItem(`completed_challenges_${user?.id}`);
+    return saved ? JSON.parse(saved) : {};
+  });
 
   useEffect(() => {
     api.get('/challenges')
@@ -110,6 +148,7 @@ export default function Challenges() {
             startDate: new Date(item.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }),
             endDate: new Date(item.deadline).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }),
             mode: item.evidenceRequired ? 'Solo' : 'Team',
+            description: item.description || 'Actionable sustainable compliance challenge.',
           }));
           setChallenges(mapped);
         } else {
@@ -148,6 +187,44 @@ export default function Challenges() {
     setSelectedCategories([]);
   };
 
+  const handleJoinChallenge = (id: string) => {
+    const updated = { ...joinedChallenges, [id]: !joinedChallenges[id] };
+    setJoinedChallenges(updated);
+    localStorage.setItem(`joined_challenges_${user?.id}`, JSON.stringify(updated));
+
+    // Update status to Active/In Progress if joined
+    if (updated[id]) {
+      const statusUpdate = { ...completedChallenges, [id]: 'Active' as const };
+      setCompletedChallenges(statusUpdate);
+      localStorage.setItem(`completed_challenges_${user?.id}`, JSON.stringify(statusUpdate));
+    } else {
+      const statusUpdate = { ...completedChallenges };
+      delete statusUpdate[id];
+      setCompletedChallenges(statusUpdate);
+      localStorage.setItem(`completed_challenges_${user?.id}`, JSON.stringify(statusUpdate));
+    }
+  };
+
+  const handleOpenProof = (id: string) => {
+    setActiveChallengeId(id);
+    setProofText('');
+    setOpenProofDialog(true);
+  };
+
+  const handleSubmitProof = () => {
+    if (!activeChallengeId) return;
+    setSubmittingProof(true);
+
+    // Simulate backend submission delays
+    setTimeout(() => {
+      const statusUpdate = { ...completedChallenges, [activeChallengeId]: 'Review' as const };
+      setCompletedChallenges(statusUpdate);
+      localStorage.setItem(`completed_challenges_${user?.id}`, JSON.stringify(statusUpdate));
+      setSubmittingProof(false);
+      setOpenProofDialog(false);
+    }, 1200);
+  };
+
   const filteredChallenges = challenges.filter((c) => {
     const matchesSearch = c.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(c.category);
@@ -158,11 +235,254 @@ export default function Challenges() {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress />
+        <CircularProgress color="success" />
       </Box>
     );
   }
 
+  // ── Employee Challenges Grid View ───────────────────────────────────────────
+  if (isEmployee) {
+    return (
+      <Box sx={{ maxWidth: 1240, mx: 'auto', pb: 4 }}>
+        {/* Navigation Breadcrumb */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
+            <Link underline="hover" color="inherit" href="#" onClick={(e) => { e.preventDefault(); navigate('/dashboard'); }}>
+              Dashboard
+            </Link>
+            <Typography color="text.primary">My Challenges</Typography>
+          </Breadcrumbs>
+        </Box>
+
+        <Typography variant="h4" fontWeight={850} sx={{ color: '#174F35', letterSpacing: '-0.03em', mb: 1 }}>
+          Sustainability Challenges
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+          Join active ESG campaigns, fulfill targets, and submit your completion proofs for verified XP rewards.
+        </Typography>
+
+        <Grid container spacing={3.5}>
+          {/* Left Categories Sidebar / Filter */}
+          <Grid item xs={12} md={3}>
+            <Card variant="outlined" sx={{ p: 2.5, borderRadius: 3, borderColor: '#D9E9DD', bgcolor: '#F9FAF9' }}>
+              <Typography variant="subtitle2" fontWeight={850} sx={{ color: '#1b4d3e', mb: 2, letterSpacing: '0.04em' }}>
+                FILTER BY CATEGORY
+              </Typography>
+              <FormGroup>
+                {['Environment', 'Social', 'Governance'].map((category) => (
+                  <FormControlLabel
+                    key={category}
+                    control={
+                      <Checkbox
+                        checked={selectedCategories.includes(category)}
+                        onChange={() => handleCategoryChange(category)}
+                        color="success"
+                        size="small"
+                      />
+                    }
+                    label={<Typography variant="body2" fontWeight={600}>{category}</Typography>}
+                    sx={{ my: -0.1 }}
+                  />
+                ))}
+              </FormGroup>
+
+              <Button
+                fullWidth
+                size="small"
+                onClick={clearFilters}
+                sx={{ mt: 3, fontWeight: 700, color: 'text.secondary', textTransform: 'none' }}
+              >
+                Clear Filters
+              </Button>
+            </Card>
+          </Grid>
+
+          {/* Challenges Grid */}
+          <Grid item xs={12} md={9}>
+            <Grid container spacing={3}>
+              {filteredChallenges.map((row) => {
+                const isJoined = !!joinedChallenges[row.id];
+                const status = completedChallenges[row.id] || 'Not Joined';
+
+                let statusLabel = 'Join Campaign';
+                let chipColor: 'default' | 'primary' | 'warning' | 'success' = 'default';
+
+                if (status === 'Active') {
+                  statusLabel = 'In Progress';
+                  chipColor = 'primary';
+                } else if (status === 'Review') {
+                  statusLabel = 'Under Review';
+                  chipColor = 'warning';
+                } else if (status === 'Completed') {
+                  statusLabel = 'Verified Completed';
+                  chipColor = 'success';
+                }
+
+                return (
+                  <Grid item xs={12} sm={6} key={row.id}>
+                    <Card
+                      variant="outlined"
+                      sx={{
+                        borderRadius: 3,
+                        borderColor: isJoined ? '#A5D6A7' : '#E5E7EB',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                        '&:hover': {
+                          transform: 'translateY(-3px)',
+                          boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+                        },
+                      }}
+                    >
+                      <Box sx={{ p: 3 }}>
+                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                          <Chip
+                            label={row.category}
+                            size="small"
+                            sx={{
+                              fontWeight: 800,
+                              fontSize: '0.7rem',
+                              bgcolor:
+                                row.category === 'Environment'
+                                  ? '#E2F0D9'
+                                  : row.category === 'Social'
+                                  ? '#FFF2CC'
+                                  : '#FCE4D6',
+                              color:
+                                row.category === 'Environment'
+                                  ? '#385723'
+                                  : row.category === 'Social'
+                                  ? '#7F6000'
+                                  : '#C65911',
+                            }}
+                          />
+                          <Typography variant="body2" fontWeight={850} color="warning.main">
+                            +{row.xpReward} XP
+                          </Typography>
+                        </Stack>
+
+                        <Typography variant="h6" fontWeight={800} sx={{ color: '#174F35', mb: 1, lineHeight: 1.25 }}>
+                          {row.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5, minHeight: 40 }}>
+                          {row.description}
+                        </Typography>
+
+                        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+                          <QueryBuilderIcon sx={{ color: 'text.secondary', fontSize: 16 }} />
+                          <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                            Deadline: {row.endDate}
+                          </Typography>
+                        </Stack>
+
+                        {isJoined && (
+                          <Box sx={{ mt: 2 }}>
+                            <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                              <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                                Campaign Status
+                              </Typography>
+                              <Typography variant="caption" color={`${chipColor}.main`} fontWeight={800}>
+                                {statusLabel}
+                              </Typography>
+                            </Stack>
+                            <LinearProgress
+                              variant="determinate"
+                              value={status === 'Completed' ? 100 : status === 'Review' ? 70 : 25}
+                              color={chipColor === 'default' ? 'success' : chipColor}
+                              sx={{ height: 6, borderRadius: 3 }}
+                            />
+                          </Box>
+                        )}
+                      </Box>
+
+                      <Box sx={{ px: 3, pb: 3, pt: 1, display: 'flex', gap: 1.5 }}>
+                        {!isJoined ? (
+                          <Button
+                            fullWidth
+                            variant="contained"
+                            onClick={() => handleJoinChallenge(row.id)}
+                            sx={{
+                              bgcolor: '#1b4d3e',
+                              fontWeight: 800,
+                              borderRadius: 2,
+                              '&:hover': { bgcolor: '#113027' },
+                            }}
+                          >
+                            Join Challenge
+                          </Button>
+                        ) : (
+                          <>
+                            {status === 'Active' && (
+                              <Button
+                                fullWidth
+                                variant="contained"
+                                color="warning"
+                                onClick={() => handleOpenProof(row.id)}
+                                startIcon={<CloudUploadIcon />}
+                                sx={{ fontWeight: 800, borderRadius: 2 }}
+                              >
+                                Submit Proof
+                              </Button>
+                            )}
+                            <Button
+                              variant="outlined"
+                              color="error"
+                              onClick={() => handleJoinChallenge(row.id)}
+                              sx={{ fontWeight: 800, borderRadius: 2 }}
+                            >
+                              Leave
+                            </Button>
+                          </>
+                        )}
+                      </Box>
+                    </Card>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          </Grid>
+        </Grid>
+
+        {/* Proof Submission Dialog */}
+        <Dialog open={openProofDialog} onClose={() => setOpenProofDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle sx={{ fontWeight: 800, color: '#174F35' }}>Submit Challenge Evidence</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Provide description or text detailing the actions you took to fulfill this ESG challenge. Auditor will verify to award XP.
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              placeholder="e.g. Completed Zero Waste lunch audit, replaced paper bags with fabric bags."
+              value={proofText}
+              onChange={(e) => setProofText(e.target.value)}
+              variant="outlined"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button onClick={() => setOpenProofDialog(false)} sx={{ fontWeight: 700 }}>
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleSubmitProof}
+              disabled={!proofText.trim() || submittingProof}
+              sx={{ fontWeight: 800, borderRadius: 2 }}
+            >
+              {submittingProof ? <CircularProgress size={20} color="inherit" /> : 'Submit Evidence'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    );
+  }
+
+  // ── Admin Challenges Table View ─────────────────────────────────────────────
   return (
     <Box sx={{ p: 1 }}>
       {/* Top Breadcrumbs & Action */}

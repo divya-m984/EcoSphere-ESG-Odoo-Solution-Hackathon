@@ -23,13 +23,17 @@ import {
   Chip,
   Avatar,
   CircularProgress,
+  Stack,
 } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CloseIcon from '@mui/icons-material/Close';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import AddIcon from '@mui/icons-material/Add';
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
+import LockIcon from '@mui/icons-material/Lock';
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Badge {
   id: string;
@@ -41,6 +45,7 @@ interface Badge {
   scope: 'Solo' | 'Team';
   timeLimited: boolean;
   xpRequired?: number;
+  unlocked?: boolean;
 }
 
 const INITIAL_BADGES: Badge[] = [
@@ -53,6 +58,7 @@ const INITIAL_BADGES: Badge[] = [
     source: 'Linked Task Milestone',
     scope: 'Solo',
     timeLimited: false,
+    unlocked: true,
   },
   {
     id: '2',
@@ -63,6 +69,7 @@ const INITIAL_BADGES: Badge[] = [
     source: 'Linked Task Milestone',
     scope: 'Solo',
     timeLimited: false,
+    unlocked: true,
   },
   {
     id: '3',
@@ -73,13 +80,53 @@ const INITIAL_BADGES: Badge[] = [
     source: 'Linked Challenge',
     scope: 'Solo',
     timeLimited: true,
+    unlocked: true,
+  },
+  {
+    id: '4',
+    name: 'Eco-Guardian',
+    description: 'Master compliance officer badge for maintaining audit integrity.',
+    family: 'Environmental',
+    tier: 3,
+    source: 'Manual XP',
+    scope: 'Solo',
+    timeLimited: false,
+    xpRequired: 3000,
+    unlocked: false,
+  },
+  {
+    id: '5',
+    name: 'Social Catalyst',
+    description: 'Participate with your team to host a community clean-up drive.',
+    family: 'Social',
+    tier: 2,
+    source: 'Linked Challenge',
+    scope: 'Team',
+    timeLimited: false,
+    unlocked: false,
+  },
+  {
+    id: '6',
+    name: 'Ethics Advocate',
+    description: 'Awarded for complete score on the quarterly ethics certification.',
+    family: 'Governance',
+    tier: 1,
+    source: 'Manual XP',
+    scope: 'Solo',
+    timeLimited: false,
+    xpRequired: 2500,
+    unlocked: false,
   },
 ];
 
 export default function Badges() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isEmployee = user?.role === 'Employee';
+
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedFamily, setSelectedFamily] = useState<string>('All');
 
   // States for Badge Modal
   const [openBadgeModal, setOpenBadgeModal] = useState(false);
@@ -110,6 +157,7 @@ export default function Badges() {
               scope: rule.scope || 'Solo',
               timeLimited: rule.timeLimited || false,
               xpRequired: rule.xpThreshold || undefined,
+              unlocked: item.unlocked !== undefined ? item.unlocked : Math.random() > 0.4, // Dynamic fallback
             };
           });
           setBadges(mapped);
@@ -164,6 +212,7 @@ export default function Badges() {
               scope: newBadgeScope,
               timeLimited: newBadgeTimeLimited,
               xpRequired: newBadgeUnlock === 'Manual_XP' ? Number(newBadgeXP) : undefined,
+              unlocked: false,
             },
           ]);
         })
@@ -175,14 +224,198 @@ export default function Badges() {
     }
   };
 
+  const filteredBadges = selectedFamily === 'All'
+    ? badges
+    : badges.filter((b) => b.family.toLowerCase() === selectedFamily.toLowerCase());
+
+  const unlockedCount = badges.filter((b) => b.unlocked).length;
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress />
+        <CircularProgress color="success" />
       </Box>
     );
   }
 
+  // ── Employee Achievements Wall View ─────────────────────────────────────────
+  if (isEmployee) {
+    return (
+      <Box sx={{ maxWidth: 1240, mx: 'auto', pb: 4 }}>
+        {/* Navigation Breadcrumb */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
+            <Link underline="hover" color="inherit" href="#" onClick={(e) => { e.preventDefault(); navigate('/dashboard'); }}>
+              Dashboard
+            </Link>
+            <Typography color="text.primary">Badges Wall</Typography>
+          </Breadcrumbs>
+        </Box>
+
+        {/* Header and Summary stats */}
+        <Grid container spacing={3} alignItems="center" sx={{ mb: 4 }}>
+          <Grid item xs={12} md={8}>
+            <Typography variant="h4" fontWeight={850} sx={{ color: '#174F35', letterSpacing: '-0.03em', mb: 1 }}>
+              Achievements Wall
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Unlock badges by accomplishing daily actions and contributing to company-wide green campaigns.
+            </Typography>
+          </Grid>
+          <Grid item xs={12} md={4} sx={{ textAlign: { md: 'right' } }}>
+            <Card
+              variant="outlined"
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 2,
+                px: 3,
+                py: 1.5,
+                borderRadius: 3,
+                borderColor: '#FFE0B2',
+                bgcolor: '#FFFDE7',
+              }}
+            >
+              <WorkspacePremiumIcon sx={{ color: '#FFB300', fontSize: 32 }} />
+              <Box sx={{ textAlign: 'left' }}>
+                <Typography variant="h6" fontWeight={850} color="#7F5F00" lineHeight={1.2}>
+                  {unlockedCount} / {badges.length}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                  Badges Unlocked
+                </Typography>
+              </Box>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Filter Tab Chips */}
+        <Box sx={{ display: 'flex', gap: 1.5, mb: 4, flexWrap: 'wrap' }}>
+          {['All', 'Environmental', 'Social', 'Governance', 'General', 'Mobility'].map((family) => {
+            const active = selectedFamily === family;
+            return (
+              <Chip
+                key={family}
+                label={family}
+                onClick={() => setSelectedFamily(family)}
+                sx={{
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  py: 1.8,
+                  px: 1,
+                  borderRadius: 3,
+                  bgcolor: active ? '#2E7D32' : '#F3F4F6',
+                  color: active ? 'white' : 'text.secondary',
+                  '&:hover': { bgcolor: active ? '#1B5E20' : '#E5E7EB' },
+                }}
+              />
+            );
+          })}
+        </Box>
+
+        {/* Achievements Grid */}
+        <Grid container spacing={3.5}>
+          {filteredBadges.map((badge) => {
+            const unlocked = badge.unlocked;
+            return (
+              <Grid item xs={12} sm={6} md={4} key={badge.id}>
+                <Card
+                  variant="outlined"
+                  sx={{
+                    p: 3,
+                    borderRadius: 3,
+                    borderColor: unlocked ? '#A5D6A7' : '#E5E7EB',
+                    bgcolor: unlocked ? '#FFFFFF' : '#F9FAF9',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    position: 'relative',
+                    opacity: unlocked ? 1 : 0.75,
+                    filter: unlocked ? 'none' : 'grayscale(30%)',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      transform: unlocked ? 'translateY(-3px)' : 'none',
+                      boxShadow: unlocked ? '0 8px 24px rgba(0,0,0,0.04)' : 'none',
+                    },
+                  }}
+                >
+                  {/* Lock Indicator */}
+                  {!unlocked && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 16,
+                        right: 16,
+                        color: 'text.secondary',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                      }}
+                    >
+                      <LockIcon fontSize="small" sx={{ color: '#9CA3AF' }} />
+                      <Typography variant="caption" fontWeight={750} color="text.secondary">
+                        Locked
+                      </Typography>
+                    </Box>
+                  )}
+
+                  <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                      <Avatar
+                        sx={{
+                          bgcolor: unlocked
+                            ? badge.timeLimited
+                              ? 'warning.light'
+                              : 'success.light'
+                            : '#E5E7EB',
+                          width: 48,
+                          height: 48,
+                          color: unlocked ? 'white' : '#9CA3AF',
+                        }}
+                      >
+                        <MilitaryTechIcon />
+                      </Avatar>
+                      <Box>
+                        <Typography variant="subtitle1" fontWeight={800} sx={{ color: unlocked ? '#174F35' : '#4B5563' }}>
+                          {badge.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                          {badge.family} &middot; Tier {badge.tier}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5, minHeight: 45 }}>
+                      {badge.description}
+                    </Typography>
+                  </Box>
+
+                  <Box>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Chip
+                        label={badge.source}
+                        size="small"
+                        variant="outlined"
+                        sx={{ borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700 }}
+                      />
+                      {badge.xpRequired && (
+                        <Typography variant="caption" fontWeight={800} color={unlocked ? 'success.main' : 'text.secondary'}>
+                          Req: {badge.xpRequired} XP
+                        </Typography>
+                      )}
+                    </Stack>
+                  </Box>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
+      </Box>
+    );
+  }
+
+  // ── Admin Badges Definition View ────────────────────────────────────────────
   return (
     <Box sx={{ p: 1 }}>
       {/* Top Breadcrumbs & Header Actions */}
@@ -264,7 +497,7 @@ export default function Badges() {
         ))}
       </Grid>
 
-      {/* CREATE NEW BADGE MODAL DIALOG (matches Image 5) */}
+      {/* CREATE NEW BADGE MODAL DIALOG */}
       <Dialog
         open={openBadgeModal}
         onClose={() => setOpenBadgeModal(false)}
